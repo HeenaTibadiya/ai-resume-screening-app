@@ -1,4 +1,4 @@
-# ResumeScreeningApp
+# AIResumeScreeningApp
 
 An AI-powered Resume Screening application built with **React** (frontend) and **Node.js + Express + Ollama (Llama 3.2:1b)** (backend), using a multi-agent architecture to parse, match, and provide feedback on resumes.
 
