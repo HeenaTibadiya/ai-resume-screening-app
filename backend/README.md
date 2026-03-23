@@ -1,4 +1,4 @@
-# Resume Screening App — Backend
+# ai-resume-screening-app — Backend
 
 The backend of the Resume Screening application, powered by **Node.js**, **Express**, and **Ollama (Llama 3.2:1b)** for AI-based resume analysis using a multi-agent architecture.
 
