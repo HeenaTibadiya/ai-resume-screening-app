@@ -1,16 +1,80 @@
-# React + Vite
+# Resume Screening App — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The frontend of the Resume Screening application, built with **React**.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠 Tech Stack
 
-## React Compiler
+- React
+- JavaScript (ES6+)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 📁 Folder Structure
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```
+frontend/
+├── src/
+│   └── App.js       # Root component — main UI and logic
+```
+
+---
+
+## ⚙️ Prerequisites
+
+Make sure the following are installed before running the frontend:
+
+- [Node.js](https://nodejs.org/) >= 18
+- npm
+- React
+
+---
+
+## 🚀 Getting Started
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/your-username/ResumeScreeningApp.git
+cd ResumeScreeningApp/frontend
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Set Up Environment Variables
+
+Create a `.env` file in the `frontend/` folder:
+
+```env
+REACT_APP_API_URL=http://localhost:5000
+```
+
+### 4. Run the App
+
+```bash
+npm start
+```
+
+The app will run at `http://localhost:3000`
+
+---
+
+## 🔗 Connecting to Backend
+
+Make sure the backend server is running at `http://localhost:5000` before using the app.
+
+Refer to the [Backend README](../backend/README.md) for setup instructions.
+
+---
+
+## 💡 Usage
+
+1. Open the app in your browser at `http://localhost:3000`
+2. Upload or paste a resume
+3. Submit for AI-powered screening
+4. View the analysis results and feedback
