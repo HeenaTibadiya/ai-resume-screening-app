@@ -1,4 +1,4 @@
-# Resume Screening App — Frontend
+# ai-resume-screening-app — Frontend
 
 The frontend of the Resume Screening application, built with **React**.
 
