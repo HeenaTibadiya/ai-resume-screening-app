@@ -105,3 +105,64 @@ The server will start at `http://localhost:5000`
 | `matchingAgent.js` | Matches extracted data against job requirements             |
 | `feedbackAgent.js` | Generates constructive feedback on the resume               |
 | `orchestrator.js`  | Coordinates the flow between all agents                     |
+
+---
+
+## Rough Notes: What Each Agent Is Doing
+
+### parserAgent
+
+- Takes raw resume text and job description text.
+- Uses an LLM prompt to return structured JSON:
+	- candidateName
+	- experienceYears
+	- resumeSkills
+	- jobSkills
+	- resumeHighlights
+	- jobHighlights
+- Tries to parse JSON from model output (supports fenced and plain JSON).
+- If model output is weak or malformed, falls back to heuristics:
+	- infers name from first meaningful line
+	- infers years from patterns like "5 years" or "3-5 years"
+	- extracts skills using a predefined skill hint list
+	- extracts highlights from stronger resume/JD lines
+- Returns cleaned, unique lists so downstream agents get stable input.
+
+### matchingAgent
+
+- Takes parsed resumeSkills and jobSkills.
+- Calls an LLM matching prompt to produce:
+	- score (0-100)
+	- matchedSkills
+	- missingSkills
+- Validates and parses model JSON output.
+- If model output is missing/invalid, falls back to deterministic matching:
+	- normalizes skills
+	- compares by exact, contains, and reverse-contains logic
+	- computes score from matched/total job skills
+- Returns matchRatio as matched count over required skill count.
+
+### feedbackAgent
+
+- Takes parsed highlights plus matching results.
+- Calls an LLM feedback prompt to generate:
+	- summary
+	- strengths
+	- gaps
+	- suggestions
+	- rewrittenBullets
+- Parses model JSON and merges it with safe fallbacks.
+- If model output is incomplete, builds fallback feedback from:
+	- current match score
+	- missing skills
+	- available resume highlights
+- Ensures user still receives actionable suggestions and at least one resume bullet rewrite.
+
+### orchestrator
+
+- Runs agents in sequence:
+	1) parser
+	2) matching
+	3) feedback
+- Passes outputs from one stage into the next.
+- Provides combined response object for the API/UI.
