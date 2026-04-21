@@ -99,33 +99,53 @@ function deterministicMatching(resumeSkills, jobSkills) {
 async function runMatching(parsed) {
 	const resumeSkills = uniqueList(parsed?.resumeSkills || []);
 	const jobSkills = uniqueList(parsed?.jobSkills || []);
+	console.log('Running Matching Agent with', { resumeSkills, jobSkills });
 
-	// Try LLM agent first
+	// Always use deterministic matching as the source of truth.
+	// The 0.5b LLM regularly misidentifies which list is which, so we cannot
+	// trust its matchedSkills/missingSkills output directly.
+	const fallback = deterministicMatching(resumeSkills, jobSkills);
+
+	// Optionally attempt LLM for score hints, but reconcile its output
+	// against the deterministic result before using it.
 	try {
 		const response = await matchingChain.call({
 			resumeSkills: JSON.stringify(resumeSkills),
 			jobSkills: JSON.stringify(jobSkills),
 		});
 
+		console.log('Matching Agent response:', response.text);
 		const result = extractJSON(response?.text);
-		const matched = toList(result?.matchedSkills);
-		const missing = toList(result?.missingSkills);
+		const llmMatched = toList(result?.matchedSkills);
 
-		if (result && typeof result.score === 'number' && matched.length + missing.length > 0) {
-			return {
-				raw: response?.text || '',
-				score: Math.max(0, Math.min(100, Math.round(result.score))),
-				matchedSkills: matched,
-				missingSkills: missing,
-				matchRatio: `${matched.length}/${jobSkills.length || 0}`,
-			};
+		if (result && typeof result.score === 'number' && llmMatched.length > 0) {
+			// Only accept LLM matchedSkills that are actual job skills — discard hallucinations
+			const verifiedMatched = jobSkills.filter((js) => {
+				const jk = normalizeSkill(js);
+				return llmMatched.some((lm) => {
+					const lk = normalizeSkill(lm);
+					return isSkillMatch(jk, lk);
+				});
+			});
+
+			// If LLM found at least as many matches as deterministic, prefer it
+			if (verifiedMatched.length >= fallback.matchedSkills.length) {
+				const verifiedMissing = jobSkills.filter((js) => !verifiedMatched.includes(js));
+				const score = jobSkills.length ? Math.round((verifiedMatched.length / jobSkills.length) * 100) : 0;
+				return {
+					raw: response?.text || '',
+					score,
+					matchedSkills: verifiedMatched,
+					missingSkills: verifiedMissing,
+					matchRatio: `${verifiedMatched.length}/${jobSkills.length}`,
+				};
+			}
 		}
 	} catch {
 		// Fall through to deterministic fallback
 	}
 
-	// Fallback: deterministic matching
-	const fallback = deterministicMatching(resumeSkills, jobSkills);
+	// Deterministic fallback
 	return {
 		raw: '',
 		...fallback,

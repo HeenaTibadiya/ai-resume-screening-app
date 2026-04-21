@@ -136,6 +136,10 @@ function extractSkillsFromText(text) {
   return uniqueList(SKILL_HINTS.filter((skill) => lower.includes(skill)));
 }
 
+function skillAppearsInText(skill, text) {
+  return String(text || '').toLowerCase().includes(String(skill || '').toLowerCase());
+}
+
 function extractHighlights(text) {
   return String(text || '')
     .split(/\r?\n/)
@@ -148,14 +152,20 @@ async function runParser(resume, jobDescription) {
   const result = await parserChain.call({ resume, jobDescription });
   const parsed = extractJSON(result?.text) || {};
 
+  const llmResumeSkills = uniqueList(parsed.resumeSkills || []);
+  const llmJobSkills = uniqueList(parsed.jobSkills || parsed.requiredSkills || []);
+
+  // Filter LLM job skills to only those that actually appear in the JD text
+  // — prevents the LLM hallucinating resume skills as job requirements
+  const verifiedJobSkills = llmJobSkills.filter((s) => skillAppearsInText(s, jobDescription));
+
   return {
     raw: result?.text || '',
     candidateName: parsed.candidateName || extractCandidateName(resume),
     experienceYears: Number(parsed.experienceYears) || extractExperienceYears(resume),
-    resumeSkills: uniqueList(parsed.resumeSkills).length ? uniqueList(parsed.resumeSkills) : extractSkillsFromText(resume),
-    jobSkills: uniqueList(parsed.jobSkills || parsed.requiredSkills).length
-      ? uniqueList(parsed.jobSkills || parsed.requiredSkills)
-      : extractSkillsFromText(jobDescription),
+    // Always merge LLM + deterministic so a truncated LLM response never drops real skills
+    resumeSkills: uniqueList([...llmResumeSkills, ...extractSkillsFromText(resume)]),
+    jobSkills: uniqueList([...verifiedJobSkills, ...extractSkillsFromText(jobDescription)]),
     resumeHighlights: uniqueList(parsed.resumeHighlights).length ? uniqueList(parsed.resumeHighlights) : extractHighlights(resume),
     jobHighlights: uniqueList(parsed.jobHighlights).length ? uniqueList(parsed.jobHighlights) : extractHighlights(jobDescription),
   };
