@@ -2,13 +2,13 @@ const { Ollama } = require('@langchain/community/llms/ollama');
 const { PromptTemplate } = require('@langchain/core/prompts');
 const { LLMChain } = require('langchain/chains');
 
-const llm = new Ollama({ model: 'qwen2.5:0.5b', temperature: 0, numPredict: 200 });
+const llm = new Ollama({ model: 'qwen2.5:0.5b', temperature: 0, numPredict: 260 });
 
 const prompt = new PromptTemplate({
-	inputVariables: ['resumeSkills', 'jobSkills'],
-	template: `You are a resume skill matching agent.
+  inputVariables: ['resumeSkills', 'jobSkills'],
+  template: `You are a resume skill matching agent.
 Return ONLY valid JSON with this exact shape:
-{{"score": 0, "matchedSkills": [], "missingSkills": []}}
+{{"score": 0, "matchedSkills": [""], "missingSkills": [""]}}
 
 Rules:
 - matchedSkills: job skills that appear in or closely match the resume skills.
@@ -23,134 +23,139 @@ Job skills: {jobSkills}`,
 const matchingChain = new LLMChain({ llm, prompt });
 
 function normalizeSkill(skill) {
-	return String(skill || '')
-		.toLowerCase()
-		.replace(/[^a-z0-9.+#]/g, ' ')
-		.replace(/\s+/g, ' ')
-		.trim();
+  return String(skill || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9.+#]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function uniqueList(values) {
-	const seen = new Set();
-	const out = [];
-	for (const value of values || []) {
-		const key = normalizeSkill(value);
-		if (!key || seen.has(key)) continue;
-		seen.add(key);
-		out.push(String(value).trim());
-	}
-	return out;
-}
-
-function isSkillMatch(resumeSkill, requiredSkill) {
-	if (!resumeSkill || !requiredSkill) return false;
-	return (
-		resumeSkill === requiredSkill ||
-		resumeSkill.includes(requiredSkill) ||
-		requiredSkill.includes(resumeSkill)
-	);
+  const seen = new Set();
+  const out = [];
+  for (const value of values || []) {
+    const raw = String(value || '').trim();
+    if (!raw) continue;
+    const key = normalizeSkill(raw);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(raw);
+  }
+  return out;
 }
 
 function extractJSON(text) {
-	if (!text) return null;
-	if (typeof text === 'object') return text;
+  if (!text) return null;
+  if (typeof text === 'object') return text;
 
-	const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-	if (fenced?.[1]) {
-		try { return JSON.parse(fenced[1]); } catch { /* continue */ }
-	}
+  const fenced = String(text).match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced && fenced[1]) {
+    try {
+      return JSON.parse(fenced[1]);
+    } catch {
+      // Fall through.
+    }
+  }
 
-	const candidates = text.match(/{[\s\S]*}/g) || [];
-	for (const candidate of candidates) {
-		try { return JSON.parse(candidate); } catch { /* continue */ }
-	}
+  const candidates = String(text).match(/{[\s\S]*}/g) || [];
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // Try next.
+    }
+  }
 
-	return null;
+  return null;
 }
 
 function toList(value) {
-	if (!Array.isArray(value)) return [];
-	return value.filter((item) => typeof item === 'string').map((item) => item.trim()).filter(Boolean);
+  if (!Array.isArray(value)) return [];
+  return uniqueList(value.filter((item) => typeof item === 'string'));
+}
+
+function isSkillMatch(resumeSkill, requiredSkill) {
+  if (!resumeSkill || !requiredSkill) return false;
+  return (
+    resumeSkill === requiredSkill ||
+    resumeSkill.includes(requiredSkill) ||
+    requiredSkill.includes(resumeSkill)
+  );
 }
 
 function deterministicMatching(resumeSkills, jobSkills) {
-	const normalizedResume = resumeSkills.map((skill) => ({
-		raw: skill,
-		key: normalizeSkill(skill),
-	}));
+  const normalizedResume = resumeSkills.map((skill) => ({
+    raw: skill,
+    key: normalizeSkill(skill),
+  }));
 
-	const matchedSkills = [];
-	const missingSkills = [];
+  const matchedSkills = [];
+  const missingSkills = [];
 
-	for (const skill of jobSkills) {
-		const normalizedSkill = normalizeSkill(skill);
-		const found = normalizedResume.find((r) => isSkillMatch(r.key, normalizedSkill));
-		if (found) {
-			matchedSkills.push(skill);
-		} else {
-			missingSkills.push(skill);
-		}
-	}
+  for (const jobSkill of jobSkills) {
+    const jobKey = normalizeSkill(jobSkill);
+    const found = normalizedResume.some((resumeSkill) => isSkillMatch(resumeSkill.key, jobKey));
+    if (found) {
+      matchedSkills.push(jobSkill);
+    } else {
+      missingSkills.push(jobSkill);
+    }
+  }
 
-	const score = jobSkills.length ? Math.round((matchedSkills.length / jobSkills.length) * 100) : 0;
-	return { score, matchedSkills, missingSkills };
+  const score = jobSkills.length ? Math.round((matchedSkills.length / jobSkills.length) * 100) : 0;
+  return { score, matchedSkills, missingSkills };
+}
+
+function verifyLLMMatchedSkills(llmMatchedSkills, jobSkills) {
+  const out = [];
+  for (const jobSkill of jobSkills) {
+    const jobKey = normalizeSkill(jobSkill);
+    const found = llmMatchedSkills.some((m) => isSkillMatch(normalizeSkill(m), jobKey));
+    if (found) out.push(jobSkill);
+  }
+  return uniqueList(out);
 }
 
 async function runMatching(parsed) {
-	const resumeSkills = uniqueList(parsed?.resumeSkills || []);
-	const jobSkills = uniqueList(parsed?.jobSkills || []);
-	console.log('Running Matching Agent with', { resumeSkills, jobSkills });
+  const resumeSkills = uniqueList(parsed && parsed.resumeSkills ? parsed.resumeSkills : []);
+  const jobSkills = uniqueList(parsed && parsed.jobSkills ? parsed.jobSkills : []);
 
-	// Always use deterministic matching as the source of truth.
-	// The 0.5b LLM regularly misidentifies which list is which, so we cannot
-	// trust its matchedSkills/missingSkills output directly.
-	const fallback = deterministicMatching(resumeSkills, jobSkills);
+  const fallback = deterministicMatching(resumeSkills, jobSkills);
 
-	// Optionally attempt LLM for score hints, but reconcile its output
-	// against the deterministic result before using it.
-	try {
-		const response = await matchingChain.call({
-			resumeSkills: JSON.stringify(resumeSkills),
-			jobSkills: JSON.stringify(jobSkills),
-		});
+  let raw = '';
+  try {
+    const response = await matchingChain.call({
+      resumeSkills: JSON.stringify(resumeSkills),
+      jobSkills: JSON.stringify(jobSkills),
+    });
+    raw = response && response.text ? response.text : '';
 
-		console.log('Matching Agent response:', response.text);
-		const result = extractJSON(response?.text);
-		const llmMatched = toList(result?.matchedSkills);
+    const llm = extractJSON(raw);
+    const llmMatched = toList(llm && llm.matchedSkills ? llm.matchedSkills : []);
+    const verifiedMatched = verifyLLMMatchedSkills(llmMatched, jobSkills);
 
-		if (result && typeof result.score === 'number' && llmMatched.length > 0) {
-			// Only accept LLM matchedSkills that are actual job skills — discard hallucinations
-			const verifiedMatched = jobSkills.filter((js) => {
-				const jk = normalizeSkill(js);
-				return llmMatched.some((lm) => {
-					const lk = normalizeSkill(lm);
-					return isSkillMatch(jk, lk);
-				});
-			});
+    if (verifiedMatched.length >= fallback.matchedSkills.length) {
+      const missingSkills = jobSkills.filter((skill) => !verifiedMatched.includes(skill));
+      const score = jobSkills.length ? Math.round((verifiedMatched.length / jobSkills.length) * 100) : 0;
+      return {
+        raw,
+        score,
+        matchedSkills: verifiedMatched,
+        missingSkills,
+        matchRatio: `${verifiedMatched.length}/${jobSkills.length || 0}`,
+      };
+    }
+  } catch {
+    // Use deterministic fallback.
+  }
 
-			// If LLM found at least as many matches as deterministic, prefer it
-			if (verifiedMatched.length >= fallback.matchedSkills.length) {
-				const verifiedMissing = jobSkills.filter((js) => !verifiedMatched.includes(js));
-				const score = jobSkills.length ? Math.round((verifiedMatched.length / jobSkills.length) * 100) : 0;
-				return {
-					raw: response?.text || '',
-					score,
-					matchedSkills: verifiedMatched,
-					missingSkills: verifiedMissing,
-					matchRatio: `${verifiedMatched.length}/${jobSkills.length}`,
-				};
-			}
-		}
-	} catch {
-		// Fall through to deterministic fallback
-	}
-
-	// Deterministic fallback
-	return {
-		raw: '',
-		...fallback,
-		matchRatio: `${fallback.matchedSkills.length}/${jobSkills.length || 0}`,
-	};
+  return {
+    raw,
+    score: fallback.score,
+    matchedSkills: fallback.matchedSkills,
+    missingSkills: fallback.missingSkills,
+    matchRatio: `${fallback.matchedSkills.length}/${jobSkills.length || 0}`,
+  };
 }
 
 module.exports = { runMatching };

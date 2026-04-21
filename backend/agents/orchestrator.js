@@ -50,6 +50,7 @@ async function runPipeline(resume, jobDescription, options = {}) {
     'Profile extraction complete',
     () => runParser(resume, jobDescription),
   );
+  console.log(parsed)
   log('Parser Agent completed', {
     candidateName: parsed.candidateName || '',
     experienceYears: parsed.experienceYears || 0,

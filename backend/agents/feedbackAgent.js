@@ -2,18 +2,18 @@ const { Ollama } = require('@langchain/community/llms/ollama');
 const { PromptTemplate } = require('@langchain/core/prompts');
 const { LLMChain } = require('langchain/chains');
 
-const llm = new Ollama({ model: 'qwen2.5:0.5b', temperature: 0.2, numPredict: 280 });
+const llm = new Ollama({ model: 'qwen2.5:0.5b', temperature: 0.2, numPredict: 320 });
 
 const prompt = new PromptTemplate({
-	inputVariables: ['score', 'matchedSkills', 'missingSkills', 'resumeHighlights', 'jobHighlights'],
-	template: `You are a resume feedback agent.
+  inputVariables: ['score', 'matchedSkills', 'missingSkills', 'resumeHighlights', 'jobHighlights'],
+  template: `You are a resume feedback agent.
 Return ONLY valid JSON with this exact shape:
 {{
-	"summary": "",
-	"strengths": [""],
-	"gaps": [""],
-	"suggestions": [""],
-	"rewrittenBullets": [""]
+  "summary": "",
+  "strengths": [""],
+  "gaps": [""],
+  "suggestions": [""],
+  "rewrittenBullets": [""]
 }}
 
 Rules:
@@ -25,96 +25,132 @@ Match score: {score}
 Matched skills: {matchedSkills}
 Missing skills: {missingSkills}
 Resume highlights: {resumeHighlights}
-Job highlights: {jobHighlights}`
+Job highlights: {jobHighlights}`,
 });
 
 const feedbackChain = new LLMChain({ llm, prompt });
 
 function extractJSON(text) {
-	if (!text) return null;
-	if (typeof text === 'object') return text;
+  if (!text) return null;
+  if (typeof text === 'object') return text;
 
-	const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-	if (fenced?.[1]) {
-		try {
-			return JSON.parse(fenced[1]);
-		} catch {
-			// Continue with fallback parsing.
-		}
-	}
+  const fenced = String(text).match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced && fenced[1]) {
+    try {
+      return JSON.parse(fenced[1]);
+    } catch {
+      // Fall through.
+    }
+  }
 
-	const candidates = text.match(/{[\s\S]*}/g) || [];
-	for (const candidate of candidates) {
-		try {
-			return JSON.parse(candidate);
-		} catch {
-			// Ignore bad candidate and continue.
-		}
-	}
+  const candidates = String(text).match(/{[\s\S]*}/g) || [];
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // Try next candidate.
+    }
+  }
 
-	return null;
+  return null;
 }
 
-function toList(value) {
-	if (!Array.isArray(value)) return [];
-	return value
-		.filter((item) => typeof item === 'string')
-		.map((item) => item.trim())
-		.filter(Boolean);
+function normalizeSkill(skill) {
+  return String(skill || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9.+#]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function uniqueList(values, mode = 'text') {
+  const seen = new Set();
+  const out = [];
+  for (const value of values || []) {
+    if (typeof value !== 'string') continue;
+    const trimmed = value.trim();
+    if (!trimmed) continue;
+    const key = mode === 'skill' ? normalizeSkill(trimmed) : trimmed.toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+function toList(value, mode = 'text') {
+  if (!Array.isArray(value)) return [];
+  return uniqueList(value, mode);
 }
 
 function buildFallbackFeedback(parsed, matched) {
-	const matchedSkills = matched.matchedSkills || [];
-	const missingSkills = matched.missingSkills || [];
-	const suggestions = [];
-	const rewrittenBullets = [];
+  const strengths = uniqueList(matched && matched.matchedSkills ? matched.matchedSkills : [], 'skill');
+  const gaps = uniqueList(matched && matched.missingSkills ? matched.missingSkills : [], 'skill');
+  const suggestions = [];
+  const rewrittenBullets = [];
 
-	if (missingSkills.length) {
-		suggestions.push(`Add stronger evidence for ${missingSkills.slice(0, 4).join(', ')} to better align with the job description.`);
-		rewrittenBullets.push(`Built production-ready features using ${missingSkills.slice(0, 3).join(', ')} while collaborating across product and engineering teams.`);
-	}
+  if (gaps.length) {
+    suggestions.push(`Add project evidence for ${gaps.slice(0, 4).join(', ')} with measurable outcomes.`);
+    rewrittenBullets.push(`Implemented end-to-end features using ${gaps.slice(0, 3).join(', ')} with focus on reliability, performance, and maintainability.`);
+  }
 
-	if ((parsed.resumeHighlights || []).length < 3) {
-		suggestions.push('Include more measurable outcomes, delivery impact, or performance improvements in your experience bullets.');
-	}
+  if ((parsed && parsed.resumeHighlights ? parsed.resumeHighlights : []).length < 3) {
+    suggestions.push('Include more quantified results in resume bullets, such as latency reductions, throughput gains, or delivery impact.');
+  }
 
-	if (!rewrittenBullets.length) {
-		rewrittenBullets.push('Designed and delivered scalable frontend and full-stack features with emphasis on performance, maintainability, and user experience.');
-	}
+  if (!suggestions.length) {
+    suggestions.push('Tailor your top 3 bullets to mirror the job priorities and keep achievements metric-driven.');
+  }
 
-	return {
-		summary: matched.score >= 70
-			? 'Your resume is a strong match, but a few targeted edits can improve clarity and relevance.'
-			: matched.score >= 40
-				? 'Your resume is partially aligned. Better keyword coverage and stronger impact statements would improve the match.'
-				: 'Your resume needs clearer alignment with the required technical stack and job expectations.',
-		strengths: matchedSkills,
-		gaps: missingSkills,
-		suggestions,
-		rewrittenBullets,
-	};
+  if (!rewrittenBullets.length) {
+    rewrittenBullets.push('Designed and delivered scalable full-stack features with emphasis on performance, maintainability, and user impact.');
+  }
+
+  const score = matched && typeof matched.score === 'number' ? matched.score : 0;
+  const summary =
+    score >= 70
+      ? 'Your resume is a strong match, with only minor improvements needed for clarity and impact.'
+      : score >= 40
+        ? 'Your resume is partially aligned; stronger keyword coverage and quantified outcomes will improve fit.'
+        : 'Your resume needs clearer alignment with the role requirements and stronger evidence of required skills.';
+
+  return { summary, strengths, gaps, suggestions, rewrittenBullets };
 }
 
 async function runFeedback(parsed, matched) {
-	const response = await feedbackChain.call({
-		score: String(matched.score || 0),
-		matchedSkills: JSON.stringify(matched.matchedSkills || []),
-		missingSkills: JSON.stringify(matched.missingSkills || []),
-		resumeHighlights: JSON.stringify(parsed.resumeHighlights || []),
-		jobHighlights: JSON.stringify(parsed.jobHighlights || []),
-	});
+  const fallback = buildFallbackFeedback(parsed, matched);
 
-	const feedback = extractJSON(response?.text) || {};
-	const fallback = buildFallbackFeedback(parsed, matched);
+  let raw = '';
+  let feedback = {};
 
-	return {
-		raw: response?.text || '',
-		summary: feedback.summary || fallback.summary,
-		strengths: toList(feedback.strengths).length ? toList(feedback.strengths) : fallback.strengths,
-		gaps: toList(feedback.gaps).length ? toList(feedback.gaps) : fallback.gaps,
-		suggestions: toList(feedback.suggestions).length ? toList(feedback.suggestions) : fallback.suggestions,
-		rewrittenBullets: toList(feedback.rewrittenBullets).length ? toList(feedback.rewrittenBullets) : fallback.rewrittenBullets,
-	};
+  try {
+    const response = await feedbackChain.call({
+      score: String(matched && typeof matched.score === 'number' ? matched.score : 0),
+      matchedSkills: JSON.stringify(matched && matched.matchedSkills ? matched.matchedSkills : []),
+      missingSkills: JSON.stringify(matched && matched.missingSkills ? matched.missingSkills : []),
+      resumeHighlights: JSON.stringify(parsed && parsed.resumeHighlights ? parsed.resumeHighlights : []),
+      jobHighlights: JSON.stringify(parsed && parsed.jobHighlights ? parsed.jobHighlights : []),
+    });
+    raw = response && response.text ? response.text : '';
+    feedback = extractJSON(raw) || {};
+  } catch {
+    raw = '';
+    feedback = {};
+  }
+
+  const strengths = toList(feedback.strengths, 'skill');
+  const gaps = toList(feedback.gaps, 'skill');
+  const suggestions = toList(feedback.suggestions, 'text');
+  const rewrittenBullets = toList(feedback.rewrittenBullets, 'text');
+
+  return {
+    raw,
+    summary: typeof feedback.summary === 'string' && feedback.summary.trim() ? feedback.summary.trim() : fallback.summary,
+    strengths: strengths.length ? strengths : fallback.strengths,
+    gaps: gaps.length ? gaps : fallback.gaps,
+    suggestions: suggestions.length ? suggestions : fallback.suggestions,
+    rewrittenBullets: rewrittenBullets.length ? rewrittenBullets : fallback.rewrittenBullets,
+  };
 }
 
 module.exports = { runFeedback };
