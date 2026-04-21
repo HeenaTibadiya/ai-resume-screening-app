@@ -206,6 +206,26 @@ export default function App() {
     <main className="app-shell">
       <header className="top-bar">
         <div className="top-bar-left">
+          <div className="header-icon" aria-hidden="true">
+            <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="hbg" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#0f3460"/>
+                  <stop offset="100%" stopColor="#147b8d"/>
+                </linearGradient>
+                <linearGradient id="hbolt" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#7dd3fc"/>
+                  <stop offset="100%" stopColor="#34d399"/>
+                </linearGradient>
+              </defs>
+              <rect width="64" height="64" rx="13" fill="url(#hbg)"/>
+              <rect x="14" y="10" width="26" height="34" rx="3" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5"/>
+              <line x1="19" y1="20" x2="34" y2="20" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round"/>
+              <line x1="19" y1="25" x2="34" y2="25" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round"/>
+              <line x1="19" y1="30" x2="29" y2="30" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M35 18 L28 33 L33 33 L29 48 L43 28 L37 28 L41 18 Z" fill="url(#hbolt)"/>
+            </svg>
+          </div>
           <span className="top-bar-title">Agentic AI Resume Screening &amp; Feedback</span>
           <span className="top-bar-model">Qwen2.5</span>
         </div>
