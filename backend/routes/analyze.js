@@ -5,6 +5,7 @@ const mammoth = require('mammoth');
 const { randomUUID } = require('crypto');
 const { runPipeline } = require('../agents/orchestrator');
 const { createRequestLogger } = require('../utils/logger');
+const { createStatusStream, publishStatus } = require('../utils/statusStream');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -46,11 +47,21 @@ async function extractResumeText(file, resumeText) {
   return normalizeText([extractedText, pastedText].filter(Boolean).join('\n\n'));
 }
 
+router.get('/status/:requestId', (req, res) => {
+  createStatusStream(req.params.requestId, res);
+});
+
 router.post('/', upload.single('resume'), async (req, res) => {
-  const requestId = randomUUID().slice(0, 8);
+  const requestId = normalizeText(req.body.requestId || randomUUID().slice(0, 8));
   const log = createRequestLogger(requestId);
 
   try {
+    publishStatus(requestId, {
+      type: 'pipeline',
+      state: 'queued',
+      message: 'Request queued for analysis',
+    });
+
     log('Incoming /analyze request received', {
       hasFile: Boolean(req.file),
       fileName: req.file?.originalname || '',
@@ -65,17 +76,44 @@ router.post('/', upload.single('resume'), async (req, res) => {
       jobDescriptionLength: jobDescription.length,
     });
 
+    publishStatus(requestId, {
+      type: 'pipeline',
+      state: 'running',
+      message: 'Resume and job description prepared',
+    });
+
     if (!resumeText || !jobDescription) {
       log('Validation failed: missing resume or job description');
+      publishStatus(requestId, {
+        type: 'pipeline',
+        state: 'failed',
+        message: 'Resume and job description are required',
+      });
       return res.status(400).json({ error: 'Resume and job description are required' });
     }
 
-    const result = await runPipeline(resumeText, jobDescription, { log, requestId });
+    const result = await runPipeline(resumeText, jobDescription, {
+      log,
+      requestId,
+      onStatus: (payload) => publishStatus(requestId, payload),
+    });
+
+    publishStatus(requestId, {
+      type: 'pipeline',
+      state: 'completed',
+      message: 'Analysis completed successfully',
+    });
+
     log('Sending successful response');
     return res.json({ success: true, result, requestId });
 
   } catch (err) {
     log('Request failed', { message: err.message });
+    publishStatus(requestId, {
+      type: 'pipeline',
+      state: 'failed',
+      message: err.message || 'Analysis failed',
+    });
     console.error(err);
     return res.status(500).json({ error: 'Analysis failed', details: err.message, requestId });
   }

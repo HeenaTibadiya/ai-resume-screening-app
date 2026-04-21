@@ -55,7 +55,9 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [activeStep, setActiveStep] = useState(0);
+  const [pipelineState, setPipelineState] = useState('idle');
+  const [agentStates, setAgentStates] = useState({ parser: 'idle', matching: 'idle', feedback: 'idle' });
+  const [agentMessages, setAgentMessages] = useState({ parser: '', matching: '', feedback: '' });
 
   const parsed = result?.parsed || {};
   const matched = result?.matched || {};
@@ -79,10 +81,30 @@ export default function App() {
     setError('');
     setResult(null);
     setLoading(true);
-    setActiveStep(0);
+    setPipelineState('idle');
+    setAgentStates({ parser: 'idle', matching: 'idle', feedback: 'idle' });
+    setAgentMessages({ parser: '', matching: '', feedback: '' });
 
-    const parserTimer = setTimeout(() => setActiveStep(1), 1200);
-    const feedbackTimer = setTimeout(() => setActiveStep(2), 2600);
+    const requestId = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+    const es = new EventSource(`http://localhost:5000/analyze/status/${requestId}`);
+
+    const handleSSE = (evt) => {
+      try {
+        const data = JSON.parse(evt.data);
+        if (data.type === 'pipeline') {
+          setPipelineState(data.state);
+          if (data.state === 'completed' || data.state === 'failed') {
+            es.close();
+          }
+        } else if (data.type === 'agent') {
+          setAgentStates(prev => ({ ...prev, [data.agent]: data.state }));
+          setAgentMessages(prev => ({ ...prev, [data.agent]: data.message || '' }));
+        }
+      } catch {}
+    };
+    // Backend sends named events: "event: status" — must use addEventListener, not onmessage
+    es.addEventListener('status', handleSSE);
+    es.onerror = () => es.close();
 
     try {
       const fd = new FormData();
@@ -91,15 +113,14 @@ export default function App() {
       }
       fd.append('resumeText', resumeText);
       fd.append('jobDescription', jobDescription);
+      fd.append('requestId', requestId);
       const res = await axios.post('http://localhost:5000/analyze', fd);
       setResult(res.data.result);
     } catch {
       setError('Analysis failed. Make sure your backend is running on port 5000.');
+      es.close();
     }
-    clearTimeout(parserTimer);
-    clearTimeout(feedbackTimer);
     setLoading(false);
-    setActiveStep(0);
   };
 
   const onFileChange = (event) => {
@@ -111,125 +132,166 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <section className="hero-panel">
-        <div className="hero-copy">
-          <p className="eyebrow">AI-Based Resume Screening and Feedback System</p>
-          <h1>Transparent resume evaluation with agent-based AI</h1>
-          <p className="hero-text">
-            Upload a resume, paste the job description, and get a clear match score with strengths, missing skills, and practical improvements.
-          </p>
-          <div className="hero-stats">
-            <div><strong>3</strong><span>AI agents</span></div>
-            <div><strong>Qwen2.5</strong><span>Model used</span></div>
-            <div><strong>1</strong><span>Unified feedback report</span></div>
-          </div>
+      <header className="top-bar">
+        <div className="top-bar-left">
+          <span className="top-bar-title">Agentic AI Resume Screening &amp; Feedback</span>
+          <span className="top-bar-model">Qwen2.5</span>
         </div>
-        <div className="hero-card">
-          <div className="hero-card-grid">
-            {initialSteps.map((step, index) => (
-              <div key={step.key} className={`hero-step ${loading && activeStep === index ? 'active' : ''}`}>
-                <span>{index + 1}</span>
-                <div>
-                  <strong>{step.label}</strong>
-                  <p>{loading && activeStep === index ? 'Running now' : 'Ready'}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="top-bar-agents">
+          {initialSteps.map((step) => (
+            <span
+              key={step.key}
+              className={`agent-pill ${
+                agentStates[step.key] === 'running' ? 'ap-running'
+                : agentStates[step.key] === 'completed' ? 'ap-done'
+                : agentStates[step.key] === 'failed' ? 'ap-failed'
+                : ''
+              }`}
+            >
+              <span className={`ap-dot ${agentStates[step.key] === 'running' ? 'dot-pulse' : ''}`} />
+              {step.label}
+            </span>
+          ))}
         </div>
-      </section>
+      </header>
 
-      <section className="input-panel">
-        <div className="section-title">
-          <p>Input</p>
-          <h2>Upload resume or paste resume text</h2>
-        </div>
+      <div className="page-body">
+        {/* ── Left: inputs ── */}
+        <aside className="left-col">
+          <div className="section-title">
+            <h2>Resume &amp; Job Description</h2>
+          </div>
 
-        <div className="upload-box">
           <label className="upload-zone" htmlFor="resume-upload">
             <input id="resume-upload" type="file" accept=".pdf,.doc,.docx" onChange={onFileChange} />
-            <strong>Upload PDF, DOC, or DOCX</strong>
-            <span>{resumeFile ? resumeFile.name : 'Choose a resume file to analyze'}</span>
-          </label>
-        </div>
-
-        <div className="text-grid">
-          <label>
-            <span>Resume Text</span>
-            <textarea
-              rows={12}
-              value={resumeText}
-              onChange={(event) => setResumeText(event.target.value)}
-              placeholder="Paste resume content here if you do not want to upload a file."
-            />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <strong>{resumeFile ? resumeFile.name : 'Upload PDF, DOC or DOCX'}</strong>
+            <span>{resumeFile ? 'File ready' : 'or paste text below'}</span>
           </label>
 
-          <label>
-            <span>Job Description</span>
-            <textarea
-              rows={12}
-              value={jobDescription}
-              onChange={(event) => setJobDescription(event.target.value)}
-              placeholder="Paste the target job description, skills, and requirements."
-            />
-          </label>
-        </div>
+          <div className="text-stack">
+            <label>
+              <span>Resume Text</span>
+              <textarea
+                rows={6}
+                value={resumeText}
+                onChange={(event) => setResumeText(event.target.value)}
+                placeholder="Paste resume content here…"
+              />
+            </label>
+            <label>
+              <span>Job Description</span>
+              <textarea
+                rows={6}
+                value={jobDescription}
+                onChange={(event) => setJobDescription(event.target.value)}
+                placeholder="Paste the target job description…"
+              />
+            </label>
+          </div>
 
-        {error && <div className="error-box">{error}</div>}
+          {error && <div className="error-box">{error}</div>}
 
-        <button className="primary-btn" onClick={analyze} disabled={loading}>
-          {loading ? 'Analyzing resume...' : 'Analyze Resume'}
-        </button>
-      </section>
+          <button className="primary-btn" onClick={analyze} disabled={loading}>
+            {loading ? 'Analyzing…' : 'Analyze Resume'}
+          </button>
+        </aside>
 
-      {loading && (
-        <section className="progress-panel">
-          {initialSteps.map((step, index) => (
-            <div key={step.key} className={`progress-step ${activeStep === index ? 'active' : activeStep > index ? 'done' : ''}`}>
-              <span>{index + 1}</span>
-              <div>
-                <strong>{step.label}</strong>
-                <p>{activeStep === index ? 'Running' : activeStep > index ? 'Completed' : 'Queued'}</p>
+        {/* ── Right: pipeline + results ── */}
+        <div className="right-col">
+          {(loading || pipelineState !== 'idle') && (
+            <section className="progress-panel">
+              {initialSteps.map((step, index) => {
+                const state = agentStates[step.key];
+                const stepCls = state === 'running' ? 'active' : state === 'completed' ? 'done' : state === 'failed' ? 'failed' : '';
+                return (
+                  <div key={step.key} className={`progress-step ${stepCls}`}>
+                    <span className={state === 'running' ? 'spinning' : ''}>
+                      {state === 'completed' ? '✓' : state === 'failed' ? '✗' : index + 1}
+                    </span>
+                    <div>
+                      <strong>{step.label}</strong>
+                      <p>
+                        {state === 'running'
+                          ? (agentMessages[step.key] || 'Running…')
+                          : state === 'completed' ? 'Completed'
+                          : state === 'failed' ? 'Failed'
+                          : 'Queued'}
+                      </p>
+                      {state === 'running' && <div className="agent-bar"><div className="agent-bar-fill" /></div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+          )}
+
+          {!result && !loading && pipelineState === 'idle' && (
+            <div className="empty-right">
+              <p className="empty-heading">Agentic AI Resume Screening &amp; Feedback</p>
+              <p className="empty-sub">Fill in the resume and job description on the left, then hit <strong>Analyze Resume</strong>.</p>
+              <div className="agent-cards">
+                <div className="agent-card">
+                  <div className="ac-icon" style={{background:'linear-gradient(135deg,#103c68,#1d75b8)'}}>📄</div>
+                  <div>
+                    <strong>Parser Agent</strong>
+                    <p>Extracts candidate profile, skills, experience and key highlights from the resume.</p>
+                  </div>
+                </div>
+                <div className="agent-card">
+                  <div className="ac-icon" style={{background:'linear-gradient(135deg,#0f6e56,#19a8a3)'}}>🔍</div>
+                  <div>
+                    <strong>Matching Agent</strong>
+                    <p>Compares resume skills against the job description and generates a compatibility score.</p>
+                  </div>
+                </div>
+                <div className="agent-card">
+                  <div className="ac-icon" style={{background:'linear-gradient(135deg,#4a3fc0,#7f77dd)'}}>💬</div>
+                  <div>
+                    <strong>Feedback Agent</strong>
+                    <p>Produces improvement suggestions and rewrites weak bullet points for stronger impact.</p>
+                  </div>
+                </div>
               </div>
             </div>
-          ))}
-        </section>
-      )}
+          )}
 
-      {result && (
-        <section className="results-panel">
-          <div className={`score-banner ${scoreTone(score)}`}>
-            <div className="score-circle">
-              <strong>{score}</strong>
-              <span>/100</span>
-            </div>
-            <div className="score-copy">
-              <p>Compatibility Score</p>
-              <h2>{feedback.summary || 'Resume analysis completed'}</h2>
-              <div className="score-meta">
-                <span>{matched.matchRatio || '0/0'} matched skills</span>
-                <span>{parsed.candidateName || 'Candidate name unavailable'}</span>
-                <span>{parsed.experienceYears || 0} years inferred experience</span>
+          {result && (
+            <section className="results-panel">
+              <div className={`score-banner ${scoreTone(score)}`}>
+                <div className="score-circle">
+                  <strong>{score}</strong>
+                  <span>/100</span>
+                </div>
+                <div className="score-copy">
+                  <p>Compatibility Score</p>
+                  <h2>{feedback.summary || 'Resume analysis completed'}</h2>
+                  <div className="score-meta">
+                    <span>{matched.matchRatio || '0/0'} matched skills</span>
+                    <span>{parsed.candidateName || 'Candidate name unavailable'}</span>
+                    <span>{parsed.experienceYears || 0} yrs experience</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div className="results-grid">
-            <ResultTags title="Strengths" items={strengths} tone="good" empty="No strengths identified." />
-            <ResultTags title="Missing Skills" items={gaps} tone="alert" empty="No major gaps identified." />
-          </div>
+              <div className="results-grid">
+                <ResultTags title="Strengths" items={strengths} tone="good" empty="No strengths identified." />
+                <ResultTags title="Missing Skills" items={gaps} tone="alert" empty="No major gaps identified." />
+              </div>
 
-          <div className="results-grid">
-            <ResultTags title="Resume Highlights" items={parsed.resumeHighlights || []} tone="neutral" empty="No resume highlights extracted." />
-            <ResultTags title="Job Highlights" items={parsed.jobHighlights || []} tone="neutral" empty="No job highlights extracted." />
-          </div>
+              <div className="results-grid">
+                <ResultTags title="Resume Highlights" items={parsed.resumeHighlights || []} tone="neutral" empty="No resume highlights extracted." />
+                <ResultTags title="Job Highlights" items={parsed.jobHighlights || []} tone="neutral" empty="No job highlights extracted." />
+              </div>
 
-          <div className="advice-grid">
-            <AdviceList title="Improvement Suggestions" items={suggestions} />
-            <AdviceList title="Resume-Ready Bullet Rewrites" items={rewrittenBullets} />
-          </div>
-        </section>
-      )}
+              <div className="advice-grid">
+                <AdviceList title="Improvement Suggestions" items={suggestions} />
+                <AdviceList title="Resume-Ready Bullet Rewrites" items={rewrittenBullets} />
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
     </main>
   );
 }
