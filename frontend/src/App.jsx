@@ -212,7 +212,7 @@ export default function App() {
               <path d="M35 18 L28 33 L33 33 L29 48 L43 28 L37 28 L41 18 Z" fill="url(#hbolt)"/>
             </svg>
           </div>
-          <span className="top-bar-title">Agentic AI Resume Screening &amp; Feedback</span>
+          <span className="top-bar-title">Agentic ResumeIQ &mdash; Parse &middot; Match &middot; Feedback</span>
           <span className="top-bar-model">Llama 3.1 8b · Groq</span>
         </div>
         <div className="top-bar-agents">
@@ -293,7 +293,7 @@ export default function App() {
           {!loading && pipelineState === 'idle' && !result && (
             <div className="empty-right">
               <div className="empty-intro">
-                <p className="empty-heading">Agentic AI Resume Screening &amp; Feedback</p>
+                <p className="empty-heading">Agentic ResumeIQ &mdash; Parse &middot; Match &middot; Feedback</p>
                 <p className="empty-sub">Fill in the resume and job description on the left, then hit <strong>Analyze Resume</strong>.</p>
               </div>
 
