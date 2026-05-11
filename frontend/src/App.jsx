@@ -146,7 +146,8 @@ export default function App() {
     setAgentMessages({ parser: '', matching: '', feedback: '' });
 
     const requestId = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
-    const es = new EventSource(`http://localhost:5000/analyze/status/${requestId}`);
+    const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const es = new EventSource(`${API}/analyze/status/${requestId}`);
 
     const handleSSE = (evt) => {
       try {
@@ -171,7 +172,7 @@ export default function App() {
       fd.append('resumeText', resumeText);
       fd.append('jobDescription', jobDescription);
       fd.append('requestId', requestId);
-      const res = await axios.post('http://localhost:5000/analyze', fd);
+      const res = await axios.post(`${API}/analyze`, fd);
       setResult(res.data.result);
     } catch {
       setError('Analysis failed. Make sure your backend is running on port 5000.');
@@ -212,7 +213,7 @@ export default function App() {
             </svg>
           </div>
           <span className="top-bar-title">Agentic AI Resume Screening &amp; Feedback</span>
-          <span className="top-bar-model">Llama 3.2:3b</span>
+          <span className="top-bar-model">Llama 3.1 8b · Groq</span>
         </div>
         <div className="top-bar-agents">
           {initialSteps.map((step) => (

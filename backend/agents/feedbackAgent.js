@@ -1,8 +1,11 @@
-const { Ollama } = require('@langchain/community/llms/ollama');
+
+//const { Ollama } = require('@langchain/community/llms/ollama');
+const { ChatGroq } = require('@langchain/groq');
 const { PromptTemplate } = require('@langchain/core/prompts');
 const { LLMChain } = require('langchain/chains');
 
-const llm = new Ollama({ model: 'llama3.2:3b', temperature: 0.3, numPredict: 1500, format: 'json' });
+//const llm = new Ollama({ model: 'llama3.2:3b', temperature: 0.3, numPredict: 1500, format: 'json' });
+const llm = new ChatGroq({ model: 'llama-3.1-8b-instant', temperature: 0, apiKey: process.env.GROQ_API_KEY });
 
 const prompt = new PromptTemplate({
   inputVariables: ['score', 'matchedSkills', 'missingSkills', 'resumeSkills', 'niceToHave', 'workExperience', 'jobDescription'],
@@ -140,9 +143,10 @@ async function runFeedback(parsed, matched, resume, jobDescription) {
         : 'No experience bullets extracted from resume.',
       jobDescription: String(jobDescription || '').slice(0, 800),
     });
-    raw = response && response.text ? response.text : '';
+    raw = response && (response.text || response.content) ? (response.text || response.content) : '';
     feedback = extractJSON(raw) || {};
-  } catch {
+  } catch (err) {
+    console.error('[FeedbackAgent] LLM call failed:', err.message || err);
     raw = '';
     feedback = {};
   }

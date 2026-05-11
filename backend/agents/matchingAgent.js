@@ -1,8 +1,10 @@
-const { Ollama } = require('@langchain/community/llms/ollama');
+//const { Ollama } = require('@langchain/community/llms/ollama');
+const { ChatGroq } = require('@langchain/groq');
 const { PromptTemplate } = require('@langchain/core/prompts');
 const { LLMChain } = require('langchain/chains');
 
-const llm = new Ollama({ model: 'llama3.2:3b', temperature: 0, numPredict: 500, format: 'json' });
+//const llm = new Ollama({ model: 'llama3.2:3b', temperature: 0, numPredict: 500, format: 'json' });
+const llm = new ChatGroq({ model: 'llama-3.1-8b-instant', temperature: 0, apiKey: process.env.GROQ_API_KEY });
 
 const prompt = new PromptTemplate({
   inputVariables: ['resumeSkills', 'requiredSkills', 'niceToHave'],
@@ -170,7 +172,7 @@ async function runMatching(parsed) {
       requiredSkills: JSON.stringify(requiredSkills),
       niceToHave: JSON.stringify(niceToHave),
     });
-    raw = response && response.text ? response.text : '';
+    raw = response && (response.text || response.content) ? (response.text || response.content) : '';
 
     const llmResult = extractJSON(raw);
     const llmMatched = toList(llmResult && llmResult.matchedSkills ? llmResult.matchedSkills : []);
@@ -190,7 +192,8 @@ async function runMatching(parsed) {
         matchRatio: `${verifiedMatched.length}/${requiredSkills.length || 0}`,
       };
     }
-  } catch {
+  } catch (err) {
+    console.error('[MatchingAgent] LLM call failed:', err.message || err);
     // Use deterministic fallback.
   }
 

@@ -1,8 +1,10 @@
-const { Ollama } = require('@langchain/community/llms/ollama');
+//const { Ollama } = require('@langchain/community/llms/ollama');
+const { ChatGroq } = require('@langchain/groq');
 const { PromptTemplate } = require('@langchain/core/prompts');
 const { LLMChain } = require('langchain/chains');
 
-const llm = new Ollama({ model: 'llama3.2:3b', temperature: 0, numPredict: 1500, format: 'json' });
+//const llm = new Ollama({ model: 'llama3.2:3b', temperature: 0, numPredict: 1500, format: 'json' });
+const llm = new ChatGroq({ model: 'llama-3.1-8b-instant', temperature: 0, apiKey: process.env.GROQ_API_KEY });
 
 const SKILL_HINTS = [
   'react',
@@ -111,8 +113,8 @@ Return ONLY valid JSON with this exact shape:
 
 Rules:
 - resumeSkills: all technical and soft skills explicitly mentioned in the resume.
-- requiredSkills: must-have skills from the job description (look for "required", "must have", "essential").
-- niceToHave: preferred or bonus skills from the job description (look for "nice to have", "preferred", "plus", "desirable").
+- requiredSkills: must-have skills for the role. If the job description lists multiple tracks or specializations (e.g. Frontend, Backend, Mobile), identify which single track best matches the resume and extract required skills for THAT track only. Do not combine required skills across all tracks.
+- niceToHave: preferred or bonus skills from the job description (look for "nice to have", "preferred", "plus", "desirable", or skills mentioned across all tracks as general bonuses).
 - experienceYears: total years of professional experience calculated from the resume's work history dates.
 - workExperience: copy the 4-6 most impactful bullet points verbatim from the resume's experience/work history section. These must be the candidate's actual words, not summaries.
 - Use short normalized skill names. Keep arrays unique and concise.
@@ -297,9 +299,10 @@ async function runParser(resume, jobDescription) {
 
   try {
     const result = await parserChain.call({ resume: resume, jobDescription: jobDescription });
-    raw = result && result.text ? result.text : '';
+    raw = result && (result.text || result.content) ? (result.text || result.content) : '';
     parsed = extractJSON(raw) || {};
-  } catch {
+  } catch (err) {
+    console.error('[ParserAgent] LLM call failed:', err.message || err);
     raw = '';
     parsed = {};
   }
