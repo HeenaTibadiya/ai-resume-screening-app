@@ -2,32 +2,65 @@ const { Ollama } = require('@langchain/community/llms/ollama');
 const { PromptTemplate } = require('@langchain/core/prompts');
 const { LLMChain } = require('langchain/chains');
 
-const llm = new Ollama({ model: 'qwen2.5:0.5b', temperature: 0, numPredict: 260 });
+const llm = new Ollama({ model: 'llama3.2:3b', temperature: 0, numPredict: 500, format: 'json' });
 
 const prompt = new PromptTemplate({
-  inputVariables: ['resumeSkills', 'jobSkills'],
+  inputVariables: ['resumeSkills', 'requiredSkills', 'niceToHave'],
   template: `You are a resume skill matching agent.
 Return ONLY valid JSON with this exact shape:
-{{"score": 0, "matchedSkills": [""], "missingSkills": [""]}}
+{{"score": 0, "matchedSkills": [], "missingSkills": []}}
 
 Rules:
-- matchedSkills: job skills that appear in or closely match the resume skills.
-- missingSkills: job skills NOT found in the resume.
-- score: integer 0-100 = (matchedSkills.length / total jobSkills) * 100.
+- matchedSkills: skills from requiredSkills that appear in or closely match resumeSkills.
+- missingSkills: skills from requiredSkills NOT found in resumeSkills.
+- score: integer 0-100 = (matchedSkills.length / total requiredSkills.length) * 100.
 - No markdown, no explanation.
 
 Resume skills: {resumeSkills}
-Job skills: {jobSkills}`,
+Required skills: {requiredSkills}
+Nice to have: {niceToHave}`,
 });
 
 const matchingChain = new LLMChain({ llm, prompt });
 
 function normalizeSkill(skill) {
-  return String(skill || '')
+  const ALIASES = {
+    'js': 'javascript',
+    'ts': 'typescript',
+    'postgres': 'postgresql',
+    'postgresql': 'postgresql',
+    'pg': 'postgresql',
+    'node': 'node.js',
+    'nodejs': 'node.js',
+    'react.js': 'react',
+    'reactjs': 'react',
+    'vue.js': 'vue',
+    'vuejs': 'vue',
+    'angular.js': 'angular',
+    'angularjs': 'angular',
+    'next': 'next.js',
+    'nextjs': 'next.js',
+    'express': 'express.js',
+    'expressjs': 'express.js',
+    'k8s': 'kubernetes',
+    'tf': 'terraform',
+    'mongo': 'mongodb',
+    'py': 'python',
+    'rb': 'ruby',
+    'css3': 'css',
+    'html5': 'html',
+    'rest': 'rest api',
+    'restful': 'rest api',
+    'graphql api': 'graphql',
+    'gha': 'github actions',
+    'gh actions': 'github actions',
+  };
+  const normalized = String(skill || '')
     .toLowerCase()
     .replace(/[^a-z0-9.+#]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+  return ALIASES[normalized] || normalized;
 }
 
 function uniqueList(values) {
@@ -76,11 +109,11 @@ function toList(value) {
 
 function isSkillMatch(resumeSkill, requiredSkill) {
   if (!resumeSkill || !requiredSkill) return false;
-  return (
-    resumeSkill === requiredSkill ||
-    resumeSkill.includes(requiredSkill) ||
-    requiredSkill.includes(resumeSkill)
-  );
+  if (resumeSkill === requiredSkill) return true;
+  // Use whole-word token matching to avoid false positives (e.g. java != javascript, sql != nosql)
+  if (resumeSkill.split(' ').includes(requiredSkill)) return true;
+  if (requiredSkill.split(' ').includes(resumeSkill)) return true;
+  return false;
 }
 
 function deterministicMatching(resumeSkills, jobSkills) {
@@ -118,43 +151,59 @@ function verifyLLMMatchedSkills(llmMatchedSkills, jobSkills) {
 
 async function runMatching(parsed) {
   const resumeSkills = uniqueList(parsed && parsed.resumeSkills ? parsed.resumeSkills : []);
-  const jobSkills = uniqueList(parsed && parsed.jobSkills ? parsed.jobSkills : []);
+  const requiredSkills = uniqueList(parsed && parsed.requiredSkills ? parsed.requiredSkills : []);
+  const niceToHave = uniqueList(parsed && parsed.niceToHave ? parsed.niceToHave : []);
 
-  const fallback = deterministicMatching(resumeSkills, jobSkills);
+  const fallback = deterministicMatching(resumeSkills, requiredSkills);
+
+  // Nice-to-have deterministic match
+  const niceMatched = niceToHave.filter((skill) => {
+    const skillKey = normalizeSkill(skill);
+    return resumeSkills.some((r) => isSkillMatch(normalizeSkill(r), skillKey));
+  });
+  const niceToHaveScore = niceToHave.length ? Math.round((niceMatched.length / niceToHave.length) * 100) : 0;
 
   let raw = '';
   try {
     const response = await matchingChain.call({
       resumeSkills: JSON.stringify(resumeSkills),
-      jobSkills: JSON.stringify(jobSkills),
+      requiredSkills: JSON.stringify(requiredSkills),
+      niceToHave: JSON.stringify(niceToHave),
     });
     raw = response && response.text ? response.text : '';
 
-    const llm = extractJSON(raw);
-    const llmMatched = toList(llm && llm.matchedSkills ? llm.matchedSkills : []);
-    const verifiedMatched = verifyLLMMatchedSkills(llmMatched, jobSkills);
+    const llmResult = extractJSON(raw);
+    const llmMatched = toList(llmResult && llmResult.matchedSkills ? llmResult.matchedSkills : []);
+    const verifiedMatched = verifyLLMMatchedSkills(llmMatched, requiredSkills);
 
     if (verifiedMatched.length >= fallback.matchedSkills.length) {
-      const missingSkills = jobSkills.filter((skill) => !verifiedMatched.includes(skill));
-      const score = jobSkills.length ? Math.round((verifiedMatched.length / jobSkills.length) * 100) : 0;
+      const missingSkills = requiredSkills.filter((skill) => !verifiedMatched.includes(skill));
+      const requiredScore = requiredSkills.length ? Math.round((verifiedMatched.length / requiredSkills.length) * 100) : 0;
+      const score = Math.round(requiredScore * 0.8 + niceToHaveScore * 0.2);
       return {
         raw,
         score,
+        breakdown: { requiredScore, niceToHaveScore },
+        requiredSkills,
         matchedSkills: verifiedMatched,
         missingSkills,
-        matchRatio: `${verifiedMatched.length}/${jobSkills.length || 0}`,
+        matchRatio: `${verifiedMatched.length}/${requiredSkills.length || 0}`,
       };
     }
   } catch {
     // Use deterministic fallback.
   }
 
+  const requiredScore = fallback.score;
+  const score = Math.round(requiredScore * 0.8 + niceToHaveScore * 0.2);
   return {
     raw,
-    score: fallback.score,
+    score,
+    breakdown: { requiredScore, niceToHaveScore },
+    requiredSkills,
     matchedSkills: fallback.matchedSkills,
     missingSkills: fallback.missingSkills,
-    matchRatio: `${fallback.matchedSkills.length}/${jobSkills.length || 0}`,
+    matchRatio: `${fallback.matchedSkills.length}/${requiredSkills.length || 0}`,
   };
 }
 

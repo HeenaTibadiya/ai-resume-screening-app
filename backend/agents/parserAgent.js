@@ -2,7 +2,7 @@ const { Ollama } = require('@langchain/community/llms/ollama');
 const { PromptTemplate } = require('@langchain/core/prompts');
 const { LLMChain } = require('langchain/chains');
 
-const llm = new Ollama({ model: 'qwen2.5:0.5b', temperature: 0, numPredict: 420 });
+const llm = new Ollama({ model: 'llama3.2:3b', temperature: 0, numPredict: 1500, format: 'json' });
 
 const SKILL_HINTS = [
   'react',
@@ -40,6 +40,60 @@ const SKILL_HINTS = [
   'responsive design',
   'oauth 2.0',
   'socket.io',
+  // .NET / Microsoft stack
+  'c#',
+  '.net',
+  '.net core',
+  'asp.net',
+  'asp.net core',
+  'blazor',
+  'entity framework',
+  'wpf',
+  'winforms',
+  'xamarin',
+  'maui',
+  'azure',
+  'azure devops',
+  'nuget',
+  'visual studio',
+  // Java ecosystem
+  'java',
+  'spring',
+  'spring boot',
+  'maven',
+  'gradle',
+  'hibernate',
+  'jpa',
+  // Mobile
+  'swift',
+  'kotlin',
+  'flutter',
+  'react native',
+  // Other common
+  'graphql',
+  'redis',
+  'nginx',
+  'linux',
+  'bash',
+  'terraform',
+  'ansible',
+  'jenkins',
+  'github actions',
+  'ci/cd',
+  'jest',
+  'cypress',
+  'playwright',
+  'ruby',
+  'rails',
+  'go',
+  'rust',
+  'php',
+  'laravel',
+  'vue',
+  'angular',
+  'svelte',
+  'tailwind',
+  'sass',
 ];
 
 const prompt = new PromptTemplate({
@@ -49,16 +103,19 @@ Return ONLY valid JSON with this exact shape:
 {{
   "candidateName": "",
   "experienceYears": 0,
-  "resumeSkills": [""],
-  "jobSkills": [""],
-  "resumeHighlights": [""],
-  "jobHighlights": [""]
+  "resumeSkills": [],
+  "requiredSkills": [],
+  "niceToHave": [],
+  "workExperience": []
 }}
 
 Rules:
-- Use short normalized skill names.
-- Infer years of experience from resume when possible.
-- Keep arrays unique and concise.
+- resumeSkills: all technical and soft skills explicitly mentioned in the resume.
+- requiredSkills: must-have skills from the job description (look for "required", "must have", "essential").
+- niceToHave: preferred or bonus skills from the job description (look for "nice to have", "preferred", "plus", "desirable").
+- experienceYears: total years of professional experience calculated from the resume's work history dates.
+- workExperience: copy the 4-6 most impactful bullet points verbatim from the resume's experience/work history section. These must be the candidate's actual words, not summaries.
+- Use short normalized skill names. Keep arrays unique and concise.
 - Do not add markdown or explanation.
 
 Resume:
@@ -157,6 +214,39 @@ function extractExperienceYearsFromResume(resume) {
   const explicit = text.match(/(\d+)\+?\s+years?\s+of\s+experience/i);
   if (explicit) return Number(explicit[1]) || 0;
 
+  // Calculate from work history date ranges: "Month YYYY – Month YYYY" or "Month YYYY – Present"
+  const MONTHS = {
+    january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+    july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+    jan: 0, feb: 1, mar: 2, apr: 3, jun: 5, jul: 6, aug: 7,
+    sep: 8, oct: 9, nov: 10, dec: 11,
+  };
+  const dateRangeRx = /(\w+)\s+(\d{4})\s*[\u2013\u2014\-]\s*(?:(\w+)\s+(\d{4})|present|current)/gi;
+  let earliest = null;
+  let latest = null;
+  let m;
+  while ((m = dateRangeRx.exec(text)) !== null) {
+    const sm = (m[1] || '').toLowerCase();
+    const sy = parseInt(m[2]);
+    if (!(sm in MONTHS) || isNaN(sy) || sy < 1980 || sy > 2030) continue;
+    const start = new Date(sy, MONTHS[sm]);
+    if (!earliest || start < earliest) earliest = start;
+    if (m[3] && m[4]) {
+      const em = (m[3] || '').toLowerCase();
+      const ey = parseInt(m[4]);
+      if (em in MONTHS && !isNaN(ey) && ey >= sy) {
+        const end = new Date(ey, MONTHS[em]);
+        if (!latest || end > latest) latest = end;
+      }
+    } else {
+      const now = new Date();
+      if (!latest || now > latest) latest = now;
+    }
+  }
+  if (earliest && latest && latest > earliest) {
+    return Math.max(0, Math.floor((latest - earliest) / (1000 * 60 * 60 * 24 * 365.25)));
+  }
+
   const generic = text.match(/(?:over|more than|at least|around|about)?\s*(\d+)\+?\s+years?\b/i);
   if (generic) return Number(generic[1]) || 0;
 
@@ -179,29 +269,34 @@ function extractCandidateName(resume) {
   return '';
 }
 
+function skillHintAppearsInText(hint, lowerText) {
+  const idx = lowerText.indexOf(hint);
+  if (idx === -1) return false;
+  // Ensure the match is not a substring of a longer word/token
+  const before = idx > 0 ? lowerText[idx - 1] : ' ';
+  const after = idx + hint.length < lowerText.length ? lowerText[idx + hint.length] : ' ';
+  const isBoundary = (ch) => /[\s,;/()\[\]"'|]/.test(ch);
+  return isBoundary(before) && isBoundary(after);
+}
+
 function extractSkillsFromText(text) {
   const lower = String(text || '').toLowerCase();
-  return uniqueList(SKILL_HINTS.filter((skill) => lower.includes(skill)));
+  return uniqueList(SKILL_HINTS.filter((skill) => skillHintAppearsInText(skill, lower)));
 }
 
 function skillAppearsInText(skill, text) {
   return String(text || '').toLowerCase().includes(String(skill || '').toLowerCase());
 }
 
-function extractHighlights(text) {
-  return String(text || '')
-    .split(/\r?\n/)
-    .map((line) => line.replace(/^[-*]\s*/, '').trim())
-    .filter((line) => line.length > 24)
-    .slice(0, 6);
-}
-
 async function runParser(resume, jobDescription) {
   let raw = '';
   let parsed = {};
 
+  const resumeTruncated = String(resume || '').slice(0, 2000);
+  const jobTruncated = String(jobDescription || '').slice(0, 1000);
+
   try {
-    const result = await parserChain.call({ resume, jobDescription });
+    const result = await parserChain.call({ resume: resume, jobDescription: jobDescription });
     raw = result && result.text ? result.text : '';
     parsed = extractJSON(raw) || {};
   } catch {
@@ -210,21 +305,28 @@ async function runParser(resume, jobDescription) {
   }
 
   const llmResumeSkills = uniqueList(parsed.resumeSkills || []);
-  const llmJobSkills = uniqueList(parsed.jobSkills || parsed.requiredSkills || []);
-  const verifiedJobSkills = llmJobSkills.filter((s) => skillAppearsInText(s, jobDescription));
+  const llmRequiredSkills = uniqueList(parsed.requiredSkills || parsed.jobSkills || []);
+  const llmNiceToHave = uniqueList(parsed.niceToHave || []);
+
+  const verifiedRequired = llmRequiredSkills.filter((s) => skillAppearsInText(s, jobDescription));
+  const verifiedNiceToHave = llmNiceToHave.filter((s) => skillAppearsInText(s, jobDescription));
 
   const parsedExperience = normalizeExperienceYears(parsed.experienceYears);
   const rawExperience = extractExperienceYearsFromRaw(raw);
   const resumeExperience = extractExperienceYearsFromResume(resume);
 
+  const workExperience = Array.isArray(parsed.workExperience)
+    ? uniqueList(parsed.workExperience.filter((b) => typeof b === 'string' && b.trim().length > 10))
+    : [];
+
   return {
     raw,
     candidateName: parsed.candidateName || extractCandidateName(resume),
-    experienceYears: parsedExperience ?? rawExperience ?? resumeExperience,
+    experienceYears: parsedExperience || rawExperience || resumeExperience || 0,
     resumeSkills: uniqueList([...llmResumeSkills, ...extractSkillsFromText(resume)]),
-    jobSkills: uniqueList([...verifiedJobSkills, ...extractSkillsFromText(jobDescription)]),
-    resumeHighlights: uniqueList(parsed.resumeHighlights).length ? uniqueList(parsed.resumeHighlights) : extractHighlights(resume),
-    jobHighlights: uniqueList(parsed.jobHighlights).length ? uniqueList(parsed.jobHighlights) : extractHighlights(jobDescription),
+    requiredSkills: uniqueList([...verifiedRequired, ...extractSkillsFromText(jobDescription)]),
+    niceToHave: verifiedNiceToHave,
+    workExperience,
   };
 }
 

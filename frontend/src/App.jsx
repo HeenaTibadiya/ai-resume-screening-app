@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import axios from 'axios';
+import { updateResumePdf } from './pdfLibResume.js';
 import './App.css';
 
 const initialSteps = [
@@ -48,6 +49,35 @@ function AdviceList({ title, items }) {
   );
 }
 
+function ScoreRing({ score }) {
+  const r = 44;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - Math.min(100, Math.max(0, score)) / 100);
+  const color = score >= 75 ? '#1aad74' : score >= 45 ? '#f59e0b' : '#ef4444';
+  return (
+    <div className="score-ring-wrap">
+      <svg width="110" height="110" viewBox="0 0 110 110" aria-hidden="true">
+        <circle cx="55" cy="55" r={r} fill="none" stroke="#e8f0fa" strokeWidth="9" />
+        <circle
+          cx="55" cy="55" r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="9"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          transform="rotate(-90 55 55)"
+          className="score-arc"
+        />
+      </svg>
+      <div className="score-ring-inner">
+        <strong style={{ color }}>{score}</strong>
+        <span>/100</span>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [resumeText, setResumeText] = useState('');
   const [jobDescription, setJobDescription] = useState('');
@@ -58,86 +88,44 @@ export default function App() {
   const [pipelineState, setPipelineState] = useState('idle');
   const [agentStates, setAgentStates] = useState({ parser: 'idle', matching: 'idle', feedback: 'idle' });
   const [agentMessages, setAgentMessages] = useState({ parser: '', matching: '', feedback: '' });
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const parsed = result?.parsed || {};
   const matched = result?.matched || {};
   const feedback = result?.feedback || {};
   const score = matched.score || 0;
+  const breakdown = matched.breakdown || {};
   const strengths = useMemo(() => feedback.strengths || matched.matchedSkills || [], [feedback, matched]);
   const gaps = useMemo(() => feedback.gaps || matched.missingSkills || [], [feedback, matched]);
+  const jdRequiredSkills = useMemo(() => matched.requiredSkills || parsed.requiredSkills || [], [matched, parsed]);
+  const matchedSkillsSet = useMemo(() => new Set((matched.matchedSkills || []).map(s => s.toLowerCase())), [matched]);
   const suggestions = feedback.suggestions || [];
   const rewrittenBullets = feedback.rewrittenBullets || [];
-  const resultsRef = useRef(null);
 
-  // ── PDF export ──
-  const exportPDF = async () => {
-    const html2pdf = (await import('html2pdf.js')).default;
-    const el = resultsRef.current;
-    if (!el) return;
-    html2pdf()
-      .set({
-        margin: [10, 12, 10, 12],
-        filename: `resume-screening-${parsed.candidateName || 'report'}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      })
-      .from(el)
-      .save();
-  };
+  const originalResumeText = result?.resumeText || '';
 
-  // ── Word export ──
-  const exportWord = async () => {
-    const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import('docx');
-    const { saveAs } = await import('file-saver');
-
-    const bulletList = (items) =>
-      items.map((t) => new Paragraph({ text: `• ${t}`, indent: { left: 360 } }));
-
-    const section = (title, items) => [
-      new Paragraph({ text: title, heading: HeadingLevel.HEADING_2, spacing: { before: 300 } }),
-      ...(items.length ? bulletList(items) : [new Paragraph({ text: 'None identified.' })]),
-    ];
-
-    const doc = new Document({
-      sections: [{
-        properties: {},
-        children: [
-          new Paragraph({
-            text: 'Agentic AI Resume Screening & Feedback Report',
-            heading: HeadingLevel.HEADING_1,
-            alignment: AlignmentType.CENTER,
-          }),
-          new Paragraph({ text: '' }),
-          // Meta
-          new Paragraph({ text: 'Candidate Overview', heading: HeadingLevel.HEADING_2 }),
-          new Paragraph({ children: [new TextRun({ text: 'Name: ', bold: true }), new TextRun(parsed.candidateName || 'N/A')] }),
-          new Paragraph({ children: [new TextRun({ text: 'Experience: ', bold: true }), new TextRun(`${parsed.experienceYears || 0} years`)] }),
-          new Paragraph({ children: [new TextRun({ text: 'Match Score: ', bold: true }), new TextRun(`${score}/100`)] }),
-          new Paragraph({ children: [new TextRun({ text: 'Matched Skills: ', bold: true }), new TextRun(matched.matchRatio || '0/0')] }),
-          new Paragraph({ text: '' }),
-          // Summary
-          new Paragraph({ text: 'Summary', heading: HeadingLevel.HEADING_2 }),
-          new Paragraph({ text: feedback.summary || 'No summary available.' }),
-          new Paragraph({ text: '' }),
-          // Skills sections
-          ...section('Strengths / Matched Skills', strengths),
-          new Paragraph({ text: '' }),
-          ...section('Missing Skills / Gaps', gaps),
-          new Paragraph({ text: '' }),
-          ...section('Resume Highlights', parsed.resumeHighlights || []),
-          new Paragraph({ text: '' }),
-          ...section('Job Highlights', parsed.jobHighlights || []),
-          new Paragraph({ text: '' }),
-          ...section('Improvement Suggestions', suggestions),
-          new Paragraph({ text: '' }),
-          ...section('Rewritten Resume Bullets', rewrittenBullets),
-        ],
-      }],
+  const downloadUpdatedResume = async () => {
+    const blob = await updateResumePdf({
+      candidateName:   parsed.candidateName   || '',
+      score:           matched.score          ?? null,
+      matchRatio:      matched.matchRatio     || '',
+      experienceYears: parsed.experienceYears || 0,
+      summary:         feedback.summary       || '',
+      matchedSkills:   matched.matchedSkills  || [],
+      missingSkills:   gaps,
+      niceToHave:      parsed.niceToHave      || [],
+      resumeSkills:    parsed.resumeSkills    || [],
+      workExperience:  parsed.workExperience  || [],
+      rewrittenBullets,
+      suggestions,
     });
-
-    const blob = await Packer.toBlob(doc);
-    saveAs(blob, `resume-screening-${parsed.candidateName || 'report'}.docx`);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ai-improved-resume-${(parsed.candidateName || 'candidate').replace(/\s+/g, '-')}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
   };
 
   const analyze = async () => {
@@ -174,15 +162,12 @@ export default function App() {
         }
       } catch {}
     };
-    // Backend sends named events: "event: status" — must use addEventListener, not onmessage
     es.addEventListener('status', handleSSE);
     es.onerror = () => es.close();
 
     try {
       const fd = new FormData();
-      if (resumeFile) {
-        fd.append('resume', resumeFile);
-      }
+      if (resumeFile) fd.append('resume', resumeFile);
       fd.append('resumeText', resumeText);
       fd.append('jobDescription', jobDescription);
       fd.append('requestId', requestId);
@@ -227,7 +212,7 @@ export default function App() {
             </svg>
           </div>
           <span className="top-bar-title">Agentic AI Resume Screening &amp; Feedback</span>
-          <span className="top-bar-model">Qwen2.5</span>
+          <span className="top-bar-model">Llama 3.2:3b</span>
         </div>
         <div className="top-bar-agents">
           {initialSteps.map((step) => (
@@ -254,7 +239,18 @@ export default function App() {
             <h2>Resume &amp; Job Description</h2>
           </div>
 
-          <label className="upload-zone" htmlFor="resume-upload">
+          <label
+            className={`upload-zone${isDragOver ? ' drag-over' : ''}`}
+            htmlFor="resume-upload"
+            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragOver(false);
+              const file = e.dataTransfer.files?.[0];
+              if (file) { setResumeFile(file); setError(''); }
+            }}
+          >
             <input id="resume-upload" type="file" accept=".pdf,.doc,.docx" onChange={onFileChange} />
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <strong>{resumeFile ? resumeFile.name : 'Upload PDF, DOC or DOCX'}</strong>
@@ -305,21 +301,21 @@ export default function App() {
                   <div className="ac-icon" style={{background:'linear-gradient(135deg,#103c68,#1d75b8)'}}>📄</div>
                   <div>
                     <strong>Parser Agent</strong>
-                    <p>Extracts candidate profile, skills, experience and key highlights from the resume.</p>
+                    <p>Extracts resumeSkills, requiredSkills, niceToHave, and years of experience from the resume and JD.</p>
                   </div>
                 </div>
                 <div className="agent-card">
                   <div className="ac-icon" style={{background:'linear-gradient(135deg,#0f6e56,#19a8a3)'}}>🔍</div>
                   <div>
                     <strong>Matching Agent</strong>
-                    <p>Compares resume skills against the job description and generates a compatibility score.</p>
+                    <p>Computes a weighted compatibility score with a breakdown of required vs nice-to-have skill coverage.</p>
                   </div>
                 </div>
                 <div className="agent-card">
                   <div className="ac-icon" style={{background:'linear-gradient(135deg,#4a3fc0,#7f77dd)'}}>💬</div>
                   <div>
                     <strong>Feedback Agent</strong>
-                    <p>Produces improvement suggestions and rewrites weak bullet points for stronger impact.</p>
+                    <p>Generates strengths, gaps, actionable suggestions, and ATS-ready rewritten resume bullets.</p>
                   </div>
                 </div>
               </div>
@@ -333,7 +329,7 @@ export default function App() {
                     <div className="sp-bar-wrap"><div className="sp-bar" style={{width:'82%', background:'linear-gradient(90deg,#1aad74,#19a8a3)'}} /></div>
                     <div className="sp-chips">
                       <span className="sp-chip sp-green">Strong Match</span>
-                      <span className="sp-chip">8/10 skills matched</span>
+                      <span className="sp-chip">8/10 required</span>
                       <span className="sp-chip">5 yrs experience</span>
                     </div>
                   </div>
@@ -388,7 +384,6 @@ export default function App() {
                 })}
               </section>
 
-              {/* Skeleton result cards */}
               <div className="skeleton-panel">
                 <div className="sk-score-row">
                   <div className="sk-circle skel" />
@@ -426,24 +421,19 @@ export default function App() {
           )}
 
           {result && (
-            <section className="results-panel" ref={resultsRef}>
-              <div className="export-toolbar">
-                <button className="export-btn export-pdf" onClick={exportPDF}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h1a2 2 0 0 1 0 4H9v-4z"/><line x1="13" y1="13" x2="13" y2="17"/><line x1="15" y1="13" x2="15" y2="17"/><line x1="17" y1="15" x2="13" y2="15"/></svg>
-                  Export PDF
-                </button>
-                <button className="export-btn export-word" onClick={exportWord}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 14 10 18 12 14 14 18 16 14"/></svg>
-                  Export Word
-                </button>
-              </div>
+            <section className="results-panel">
+              {result && (
+                <div className="export-toolbar">
+                  <button className="export-btn export-resume" onClick={downloadUpdatedResume}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download AI-Improved Resume PDF
+                  </button>
+                </div>
+              )}
 
               {/* Score row */}
               <div className="sp-score-row res-score-row">
-                <div className="sp-circle res-circle">
-                  <strong>{score}</strong>
-                  <span>/100</span>
-                </div>
+                <ScoreRing score={score} />
                 <div className="sp-score-info">
                   <div className="sp-bar-wrap">
                     <div className="sp-bar" style={{
@@ -456,18 +446,39 @@ export default function App() {
                     }} />
                   </div>
                   <div className="sp-chips">
-                    <span className={`sp-chip ${
-                      score >= 75 ? 'sp-green' : score >= 45 ? 'sp-amber' : 'sp-red'
-                    }`}>
+                    <span className={`sp-chip ${score >= 75 ? 'sp-green' : score >= 45 ? 'sp-amber' : 'sp-red'}`}>
                       {score >= 75 ? 'Strong Match' : score >= 45 ? 'Partial Match' : 'Low Match'}
                     </span>
-                    <span className="sp-chip">{matched.matchRatio || '0/0'} skills matched</span>
+                    <span className="sp-chip">{matched.matchRatio || '0/0'} required matched</span>
+                    {breakdown.niceToHaveScore !== undefined && breakdown.niceToHaveScore > 0 && (
+                      <span className="sp-chip">{breakdown.niceToHaveScore}% nice-to-have</span>
+                    )}
                     {parsed.candidateName && <span className="sp-chip">{parsed.candidateName}</span>}
                     <span className="sp-chip">{parsed.experienceYears || 0} yrs experience</span>
                   </div>
                   {feedback.summary && <p className="res-summary">{feedback.summary}</p>}
                 </div>
               </div>
+
+              {jdRequiredSkills.length > 0 && (
+                <div className="jd-skills-block">
+                  <span className="sp-sec-label sp-neutral">✦ Job Description Required Skills</span>
+                  <div className="sp-tags jd-skills-tags">
+                    {jdRequiredSkills.map((t, i) => {
+                      const isMatched = matchedSkillsSet.has(t.toLowerCase());
+                      return (
+                        <span key={i} className={`sp-tag ${isMatched ? 'sp-tag-matched' : 'sp-tag-alert'}`}>
+                          {isMatched ? '✓ ' : '✗ '}{t}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <div className="jd-legend">
+                    <span className="jd-legend-dot jd-dot-matched" /> You have it
+                    <span className="jd-legend-dot jd-dot-missing" /> Missing
+                  </div>
+                </div>
+              )}
 
               {/* Skills grid */}
               <div className="sp-rows">
@@ -478,24 +489,24 @@ export default function App() {
                   </div>
                 </div>
                 <div className="sp-section">
-                  <span className="sp-sec-label sp-alert">✦ Missing Skills</span>
+                  <span className="sp-sec-label sp-alert">✦ Missing Required Skills</span>
                   <div className="sp-tags">
                     {gaps.length ? gaps.map((t, i) => <span key={i} className="sp-tag sp-tag-alert">{t}</span>) : <span className="res-empty">No major gaps</span>}
                   </div>
                 </div>
-                {(parsed.resumeHighlights?.length > 0) && (
+                {(parsed.niceToHave?.length > 0) && (
                   <div className="sp-section">
-                    <span className="sp-sec-label sp-neutral">✦ Resume Highlights</span>
+                    <span className="sp-sec-label sp-neutral">✦ Nice to Have</span>
                     <div className="sp-tags">
-                      {parsed.resumeHighlights.map((t, i) => <span key={i} className="sp-tag">{t}</span>)}
+                      {parsed.niceToHave.map((t, i) => <span key={i} className="sp-tag">{t}</span>)}
                     </div>
                   </div>
                 )}
-                {(parsed.jobHighlights?.length > 0) && (
+                {(parsed.resumeSkills?.length > 0) && (
                   <div className="sp-section">
-                    <span className="sp-sec-label sp-neutral">✦ Job Highlights</span>
+                    <span className="sp-sec-label sp-neutral">✦ All Resume Skills</span>
                     <div className="sp-tags">
-                      {parsed.jobHighlights.map((t, i) => <span key={i} className="sp-tag">{t}</span>)}
+                      {parsed.resumeSkills.map((t, i) => <span key={i} className="sp-tag">{t}</span>)}
                     </div>
                   </div>
                 )}
@@ -518,12 +529,16 @@ export default function App() {
 
               {/* Rewritten bullets */}
               {rewrittenBullets.length > 0 && (
-                <div className="res-advice-block">
-                  <span className="sp-sec-label sp-neutral">✦ Rewritten Resume Bullets</span>
+                <div className="res-advice-block bullets-block">
+                  <div className="bullets-header">
+                    <span className="sp-sec-label sp-bullets-label">✦ AI-Rewritten Bullets</span>
+                    <span className="bullets-badge">ATS-ready</span>
+                  </div>
+                  <p className="bullets-sub">These replace your original bullet points in the downloaded PDF</p>
                   <div className="res-advice-list">
                     {rewrittenBullets.map((s, i) => (
-                      <div key={i} className="sp-suggestion res-adv-item">
-                        <span className="res-adv-num">{i + 1}</span>
+                      <div key={i} className="bullet-item">
+                        <span className="bullet-icon">✦</span>
                         <span>{s}</span>
                       </div>
                     ))}

@@ -50,12 +50,12 @@ async function runPipeline(resume, jobDescription, options = {}) {
     'Profile extraction complete',
     () => runParser(resume, jobDescription),
   );
-  console.log(parsed)
   log('Parser Agent completed', {
     candidateName: parsed.candidateName || '',
     experienceYears: parsed.experienceYears || 0,
     resumeSkills: parsed.resumeSkills?.length || 0,
-    jobSkills: parsed.jobSkills?.length || 0,
+    requiredSkills: parsed.requiredSkills?.length || 0,
+    niceToHave: parsed.niceToHave?.length || 0,
   });
 
   const matched = await executeAgent(
@@ -67,6 +67,8 @@ async function runPipeline(resume, jobDescription, options = {}) {
   );
   log('Matching Agent completed', {
     score: matched.score || 0,
+    requiredScore: matched.breakdown?.requiredScore || 0,
+    niceToHaveScore: matched.breakdown?.niceToHaveScore || 0,
     matchedSkills: matched.matchedSkills?.length || 0,
     missingSkills: matched.missingSkills?.length || 0,
   });
@@ -76,7 +78,7 @@ async function runPipeline(resume, jobDescription, options = {}) {
     'Feedback Agent',
     'Drafting summary, strengths, and rewrite suggestions',
     'Improvement guidance generated',
-    () => runFeedback(parsed, matched),
+    () => runFeedback(parsed, matched, resume, jobDescription),
   );
   log('Feedback Agent completed', {
     strengths: feedback.strengths?.length || 0,

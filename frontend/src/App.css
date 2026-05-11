@@ -567,6 +567,11 @@ span.spinning {
   color: #fff;
 }
 
+.export-resume {
+  background: linear-gradient(135deg, #1a6b3a, #27ae60);
+  color: #fff;
+}
+
 .score-banner {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -882,6 +887,49 @@ span.spinning {
   border-color: #f9c4b3;
   color: #a0320e;
 }
+
+.sp-tag.sp-tag-matched {
+  background: #edfbf5;
+  border-color: #86efb8;
+  color: #0f6e56;
+  font-weight: 600;
+}
+
+/* JD skills comparison block */
+.jd-skills-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: #f4f9ff;
+  border: 1px solid #d1e3f4;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.jd-skills-tags {
+  gap: 6px;
+}
+
+.jd-legend {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.72rem;
+  color: #415b77;
+  margin-top: 0.25rem;
+}
+
+.jd-legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+.jd-dot-matched { background: #1aad74; }
+.jd-dot-missing { background: #d94e3f; }
 
 .sp-suggestion {
   font-size: 0.8rem;
@@ -1201,4 +1249,111 @@ span.spinning {
     font-size: 0.78rem;
     padding: 0.35rem 0.6rem;
   }
+}
+
+/* ── Animated SVG Score Ring ── */
+.score-ring-wrap {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  flex-shrink: 0;
+}
+
+.score-ring-wrap svg {
+  display: block;
+}
+
+.score-arc {
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.4s ease;
+}
+
+.score-ring-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.score-ring-inner strong {
+  font-size: 1.85rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.score-ring-inner span {
+  font-size: 0.68rem;
+  color: #5f7490;
+}
+
+/* ── Drag-and-drop upload zone ── */
+.upload-zone.drag-over {
+  border-color: #1d75b8;
+  background: linear-gradient(135deg, #dff0ff 0%, #eef7ff 100%);
+  box-shadow: 0 0 0 4px rgba(29, 117, 184, 0.15);
+}
+
+.upload-zone.drag-over strong {
+  color: #1d75b8;
+}
+
+/* ── Rewritten Bullets (distinct look) ── */
+.bullets-block {
+  background: linear-gradient(135deg, #f0faf5 0%, #f8fffc 100%) !important;
+  border-color: #a3e4c5 !important;
+}
+
+.bullets-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.sp-bullets-label {
+  color: #0a6e47;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.bullets-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  color: #065f46;
+}
+
+.bullets-sub {
+  font-size: 0.78rem;
+  color: #4b7a63;
+  margin: 0.15rem 0 0.5rem;
+  font-style: italic;
+}
+
+.bullet-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid #b7e8d0;
+  border-left: 3px solid #1aad74;
+  border-radius: 0 10px 10px 0;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.82rem;
+  color: #1a3d2b;
+  line-height: 1.55;
+}
+
+.bullet-icon {
+  color: #1aad74;
+  font-size: 0.7rem;
+  margin-top: 3px;
+  flex-shrink: 0;
 }

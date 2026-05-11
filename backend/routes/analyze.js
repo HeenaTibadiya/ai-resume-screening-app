@@ -105,7 +105,7 @@ router.post('/', upload.single('resume'), async (req, res) => {
     });
 
     log('Sending successful response');
-    return res.json({ success: true, result, requestId });
+    return res.json({ success: true, result: { ...result, resumeText }, requestId });
 
   } catch (err) {
     log('Request failed', { message: err.message });
