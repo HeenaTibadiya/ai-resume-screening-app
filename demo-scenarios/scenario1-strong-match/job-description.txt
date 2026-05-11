@@ -1,0 +1,39 @@
+Senior Frontend Developer
+TechVision Inc. | San Francisco, CA | Full-time
+
+ABOUT THE ROLE
+We are looking for a Senior Frontend Developer to join our product engineering team. You will lead frontend development of our core SaaS platform, mentor junior developers, and collaborate with design and backend teams to ship high-quality features.
+
+REQUIRED SKILLS
+- React
+- TypeScript
+- JavaScript
+- HTML/CSS
+- REST APIs
+- Git
+- Agile/Scrum
+
+NICE TO HAVE
+- GraphQL
+- Next.js
+- AWS
+- Docker
+- Jest
+- Cypress
+- Figma
+- CI/CD
+
+RESPONSIBILITIES
+- Build scalable, performant web applications using React and TypeScript
+- Lead code reviews and mentor junior team members
+- Collaborate with designers using Figma to implement pixel-perfect UIs
+- Write unit and integration tests using Jest and Cypress
+- Work in an Agile/Scrum environment with 2-week sprints
+- Optimize frontend performance and bundle size
+
+QUALIFICATIONS
+- 4+ years of frontend development experience
+- Strong proficiency in React and TypeScript
+- Experience with REST APIs and state management
+- Excellent communication and collaboration skills
+- Bachelor's degree in Computer Science or related field

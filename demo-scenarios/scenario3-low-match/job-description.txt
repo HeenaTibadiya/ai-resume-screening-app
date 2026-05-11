@@ -1,0 +1,42 @@
+iOS Mobile Developer
+AppCraft Studios | Seattle, WA | Full-time
+
+ABOUT THE ROLE
+We are looking for an experienced iOS Developer to join our mobile team. You will build and maintain consumer-facing iOS applications used by millions of users, working closely with designers and backend engineers.
+
+REQUIRED SKILLS
+- Swift
+- Objective-C
+- Xcode
+- iOS SDK
+- UIKit
+- SwiftUI
+- CoreData
+- App Store Connect / deployment
+- React Native
+- Mobile UI/UX design principles
+
+NICE TO HAVE
+- REST APIs
+- Git
+- Agile/Scrum
+- Firebase
+- Push notifications (APNs)
+- TestFlight
+- Unit testing (XCTest)
+
+RESPONSIBILITIES
+- Develop, maintain, and ship iOS applications to the App Store
+- Build responsive, accessible mobile UIs using SwiftUI and UIKit
+- Integrate with backend REST APIs and third-party SDKs
+- Write unit and UI tests using XCTest
+- Work with designers to implement pixel-perfect mobile interfaces
+- Use TestFlight for beta distribution and gather user feedback
+- Optimize app performance and memory usage on iOS devices
+
+QUALIFICATIONS
+- 3+ years of native iOS development experience
+- Strong proficiency in Swift and SwiftUI
+- Experience with App Store submission and review process
+- Familiarity with mobile performance optimization
+- Bachelor's degree in Computer Science or related field

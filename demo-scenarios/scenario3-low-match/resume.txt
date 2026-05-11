@@ -1,0 +1,41 @@
+David Park
+Senior Backend Engineer
+Seattle, WA | david.park@email.com | github.com/davidpark
+
+PROFESSIONAL SUMMARY
+Senior Backend Engineer with 8 years of experience designing and building high-throughput server-side systems using Java, Python, and microservices architecture. Specialized in distributed systems, event-driven architecture, and cloud deployments on AWS.
+
+TECHNICAL SKILLS
+Languages: Java, Python, SQL
+Frameworks: Spring Boot, Django, FastAPI
+Databases: PostgreSQL, MySQL, Redis, MongoDB
+Messaging: RabbitMQ, Apache Kafka (basic)
+Cloud & DevOps: AWS (EC2, RDS, SQS), Docker, Kubernetes, Helm, Jenkins
+Tools: Git, Postman, IntelliJ IDEA, Maven, Gradle
+Methodologies: Microservices, REST API design, Agile
+
+PROFESSIONAL EXPERIENCE
+
+Senior Backend Engineer | FinanceApp Co. | Feb 2020 – Present
+Seattle, WA
+- Designed microservices architecture handling 1 million+ financial transactions per day using Java Spring Boot.
+- Optimized PostgreSQL queries and indexing strategies, reducing average API response time from 800ms to 120ms.
+- Built event-driven system using RabbitMQ processing 500,000 messages per day with zero message loss.
+- Deployed and managed services on AWS EKS using Kubernetes and Helm charts.
+- Collaborated with DevOps to implement CI/CD pipelines using Jenkins, reducing release cycles from weekly to daily.
+
+Backend Developer | DataSystems Corp. | Jun 2016 – Jan 2020
+Portland, OR
+- Built and maintained REST APIs in Django serving internal analytics platform used by 200 employees.
+- Designed and optimized MySQL database schema for high-volume transaction logging.
+- Wrote complex stored procedures and automated nightly batch jobs in Python.
+- Integrated with third-party financial data APIs and payment gateways.
+
+Junior Developer | CodeBase Labs | Aug 2014 – May 2016
+Remote
+- Developed REST APIs using Java Spring MVC for enterprise CRM platform.
+- Wrote unit and integration tests achieving 80% code coverage.
+
+EDUCATION
+BS in Computer Engineering
+University of Washington | May 2014

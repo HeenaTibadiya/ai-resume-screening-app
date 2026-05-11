@@ -1,0 +1,44 @@
+Alex Johnson
+Senior Frontend Developer
+San Francisco, CA | alex.johnson@email.com | github.com/alexjohnson | linkedin.com/in/alexjohnson
+
+PROFESSIONAL SUMMARY
+Senior Frontend Developer with 6 years of experience building scalable, high-performance web applications using React and TypeScript. Proven track record of leading frontend teams, improving performance metrics, and delivering user-focused products at scale.
+
+TECHNICAL SKILLS
+Languages: JavaScript (ES6+), TypeScript, HTML, CSS
+Frameworks & Libraries: React, Next.js, Redux, React Query, GraphQL, Webpack, Jest, Cypress
+Cloud & DevOps: AWS (S3, CloudFront, Lambda), Docker, GitHub Actions, CI/CD
+Tools: Git, Figma, Postman, VS Code, NPM, Yarn
+Methodologies: Agile/Scrum, TDD, Code Review, Mentoring
+
+PROFESSIONAL EXPERIENCE
+
+Senior Frontend Developer | TechCorp Inc. | Jan 2020 – Present
+San Francisco, CA
+- Built React + TypeScript SPA reducing page load time by 45% using code splitting and lazy loading.
+- Led migration from Redux to React Query, cutting API-related bugs by 60% and reducing boilerplate by 40%.
+- Implemented CI/CD pipeline using GitHub Actions, reducing deployment time from 2 hours to 15 minutes.
+- Mentored 3 junior developers, conducted weekly code reviews, and established frontend coding standards.
+- Integrated GraphQL APIs replacing 12 REST endpoints, improving data fetching efficiency by 35%.
+- Collaborated with UX team using Figma to deliver pixel-perfect, accessible interfaces for 2M+ users.
+
+Frontend Developer | WebAgency LLC | Jun 2018 – Dec 2019
+Austin, TX
+- Developed responsive UI components in React used by 500k+ monthly active users.
+- Reduced bundle size by 38% through tree-shaking, lazy imports, and Webpack optimization.
+- Built automated test suite with Jest and Cypress achieving 85% code coverage.
+- Worked directly with clients to translate wireframes into production-ready React components.
+
+Junior Frontend Developer | StartupHub | May 2016 – May 2018
+Remote
+- Built landing pages and marketing UIs using HTML, CSS, and vanilla JavaScript.
+- Introduced React to the team codebase, replacing jQuery-based UI with component architecture.
+
+EDUCATION
+BS in Computer Science
+University of Texas at Austin | May 2016
+
+PROJECTS
+- Open source React component library with 2,000+ GitHub stars
+- Personal portfolio built with Next.js and deployed on AWS

@@ -1,0 +1,38 @@
+Maria Chen
+Full Stack Developer
+New York, NY | maria.chen@email.com | github.com/mariachen
+
+PROFESSIONAL SUMMARY
+Full Stack Developer with 5 years of experience building web applications using Python, Node.js, React, and SQL. Experienced with data pipelines, scripting, and database management. Looking to transition into a data engineering role.
+
+TECHNICAL SKILLS
+Languages: Python, JavaScript, SQL, HTML, CSS
+Frameworks: React, Node.js, Express.js, Django
+Databases: MongoDB, MySQL, PostgreSQL (basic)
+Tools: Git, Docker, REST APIs, Postman, VS Code
+Other: Data export scripts, ETL scripting, reporting dashboards
+
+PROFESSIONAL EXPERIENCE
+
+Full Stack Developer | StartupXYZ | Mar 2021 – Present
+New York, NY
+- Built REST APIs in Node.js serving 50,000 daily requests with 99.9% uptime.
+- Designed MongoDB schemas and wrote complex SQL queries for executive reporting dashboards.
+- Created React dashboards to visualize real-time sales metrics for business stakeholders.
+- Automated data export and transformation scripts in Python, reducing manual work by 4 hours/week.
+- Integrated third-party APIs for payment processing and CRM data synchronization.
+
+Junior Developer | Freelance | Jan 2019 – Feb 2021
+Remote
+- Developed client websites using React and Node.js for small businesses.
+- Built a Python ETL script to migrate 50,000 customer records between CRM systems.
+- Created automated reports pulling data from MySQL databases for weekly business review.
+- Maintained PostgreSQL database for a local e-commerce client.
+
+EDUCATION
+BS in Information Technology
+New York University | May 2019
+
+CERTIFICATIONS
+- Python for Data Science — Coursera (2022)
+- SQL for Data Analysis — Udemy (2021)
