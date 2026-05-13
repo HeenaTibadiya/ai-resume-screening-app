@@ -535,7 +535,7 @@ export default function App() {
                     <span className="sp-sec-label sp-bullets-label">✦ AI-Rewritten Bullets</span>
                     <span className="bullets-badge">ATS-ready</span>
                   </div>
-                  <p className="bullets-sub">These replace your original bullet points in the downloaded PDF</p>
+                  <p className="bullets-sub"></p>
                   <div className="res-advice-list">
                     {rewrittenBullets.map((s, i) => (
                       <div key={i} className="bullet-item">

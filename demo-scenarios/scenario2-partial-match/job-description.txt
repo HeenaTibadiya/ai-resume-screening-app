@@ -1,41 +1,41 @@
-Data Engineer
-DataFlow Systems | New York, NY | Full-time
+Full Stack Software Engineer
+TechNova Inc. | Boston, MA | Full-time
 
 ABOUT THE ROLE
-We are hiring a Data Engineer to design, build, and maintain our large-scale data infrastructure. You will build ETL pipelines, work with streaming data, and optimize our data warehouse on AWS Redshift.
+We are looking for a Full Stack Software Engineer to develop and maintain web applications across the entire stack — from React frontend components to Node.js backend APIs and cloud infrastructure on AWS.
 
 REQUIRED SKILLS
-- Apache Spark
-- Kafka
-- Apache Airflow
-- Python
-- AWS Redshift
-- dbt (data build tool)
-- ETL pipeline design
-- Data warehousing concepts
-- PySpark
-- Scala
+- React
+- TypeScript
+- JavaScript
+- Node.js
+- REST APIs
+- Git
+- PostgreSQL
+- Docker
+- AWS
 
 NICE TO HAVE
-- SQL
-- Docker
-- REST APIs
-- MongoDB
-- Git
-- Luigi
-- Databricks
+- GraphQL
+- Redis
+- HTML/CSS
+- Jest
+- Figma
+- CI/CD
+- Python
+- Agile/Scrum
 
 RESPONSIBILITIES
-- Design and maintain large-scale batch and streaming data pipelines
-- Build and schedule ETL workflows using Apache Airflow and dbt
-- Optimize query performance on AWS Redshift data warehouse
-- Work with real-time streaming data via Apache Kafka
-- Collaborate with data scientists and analysts to deliver clean datasets
-- Document data lineage and pipeline architecture
+- Build and maintain full stack web applications using React and Node.js
+- Design and implement RESTful APIs and integrate with PostgreSQL databases
+- Deploy and manage services on AWS using Docker containers
+- Collaborate with product and design teams to deliver user-facing features
+- Write unit and integration tests for frontend and backend components
+- Participate in code reviews and Agile sprint planning
 
 QUALIFICATIONS
-- 2+ years of data engineering experience
-- Strong Python skills for data processing
-- Experience with distributed computing frameworks (Spark, PySpark)
-- Familiarity with cloud data warehousing (Redshift, BigQuery, or Snowflake)
-- Bachelor's degree in Computer Science, Engineering, or related field
+- 2+ years of full stack development experience
+- Strong knowledge of React and Node.js
+- Experience with PostgreSQL or other relational databases
+- Familiarity with cloud services (AWS, GCP, or Azure)
+- Bachelor's degree in Computer Science or related field

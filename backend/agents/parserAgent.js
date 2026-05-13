@@ -18,6 +18,11 @@ const SKILL_HINTS = [
   'express.js',
   'postgres',
   'sql',
+  'html',
+  'html5',
+  'css',
+  'css3',
+  'rest apis',
   'mongodb',
   'couchbase',
   'elasticsearch',
@@ -27,6 +32,10 @@ const SKILL_HINTS = [
   'gcp',
   'aws',
   'rest api',
+  'etl',
+  'etl pipeline',
+  'data warehousing',
+  'data pipelines',
   'microservices',
   'micro frontends',
   'webpack',
@@ -322,12 +331,33 @@ async function runParser(resume, jobDescription) {
     ? uniqueList(parsed.workExperience.filter((b) => typeof b === 'string' && b.trim().length > 10))
     : [];
 
+  // Infer REST API from work experience even if not listed explicitly as a skill.
+  // Matches: "REST endpoint", "REST API", "REST service", "REST call", etc.
+  const restInferred = /\brest\s+(api|apis|endpoint|endpoints|service|services|call|calls|request|requests)\b/i.test(resume)
+    ? ['REST API']
+    : [];
+
+  // Hint-extract from JD but exclude:
+  // 1. Skills the LLM classified as nice-to-have (prevents NICE TO HAVE section pollution)
+  // 2. Skills already covered by verifiedRequired (prevents 'aws' duplicating 'aws redshift')
+  const niceToHaveNorm = new Set(verifiedNiceToHave.map((s) => normalizeSkill(s)));
+  const verifiedRequiredNorm = new Set(verifiedRequired.map((s) => normalizeSkill(s)));
+  const hintFromJD = extractSkillsFromText(jobDescription).filter((s) => {
+    const sNorm = normalizeSkill(s);
+    if (niceToHaveNorm.has(sNorm)) return false;
+    if (verifiedRequiredNorm.has(sNorm)) return false;
+    // Exclude single-token hints that are already a token inside a multi-word required skill
+    // e.g. 'aws' is already covered by 'aws redshift'
+    if ([...verifiedRequiredNorm].some((req) => req.split(' ').includes(sNorm))) return false;
+    return true;
+  });
+
   return {
     raw,
     candidateName: parsed.candidateName || extractCandidateName(resume),
     experienceYears: parsedExperience || rawExperience || resumeExperience || 0,
-    resumeSkills: uniqueList([...llmResumeSkills, ...extractSkillsFromText(resume)]),
-    requiredSkills: uniqueList([...verifiedRequired, ...extractSkillsFromText(jobDescription)]),
+    resumeSkills: uniqueList([...llmResumeSkills, ...extractSkillsFromText(resume), ...restInferred]),
+    requiredSkills: uniqueList([...verifiedRequired, ...hintFromJD]),
     niceToHave: verifiedNiceToHave,
     workExperience,
   };

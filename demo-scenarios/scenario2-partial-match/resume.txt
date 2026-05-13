@@ -1,38 +1,32 @@
-Maria Chen
-Full Stack Developer
-New York, NY | maria.chen@email.com | github.com/mariachen
+Ryan Patel
+Frontend Developer
+Boston, MA | ryan.patel@email.com | github.com/ryanpatel
 
 PROFESSIONAL SUMMARY
-Full Stack Developer with 5 years of experience building web applications using Python, Node.js, React, and SQL. Experienced with data pipelines, scripting, and database management. Looking to transition into a data engineering role.
+Frontend Developer with 3 years of experience building interactive web applications using React and TypeScript. Strong UI/UX sensibility, skilled in component architecture, testing, and design collaboration. Looking to expand into full stack development.
 
 TECHNICAL SKILLS
-Languages: Python, JavaScript, SQL, HTML, CSS
-Frameworks: React, Node.js, Express.js, Django
-Databases: MongoDB, MySQL, PostgreSQL (basic)
-Tools: Git, Docker, REST APIs, Postman, VS Code
-Other: Data export scripts, ETL scripting, reporting dashboards
+Languages: JavaScript (ES6+), TypeScript, HTML5, CSS3
+Frameworks & Libraries: React, Redux, React Router, Jest, React Testing Library
+Tools: Git, Figma, Postman, VS Code, NPM, Webpack
+Methodologies: Agile/Scrum, TDD, Code Review
 
 PROFESSIONAL EXPERIENCE
 
-Full Stack Developer | StartupXYZ | Mar 2021 – Present
-New York, NY
-- Built REST APIs in Node.js serving 50,000 daily requests with 99.9% uptime.
-- Designed MongoDB schemas and wrote complex SQL queries for executive reporting dashboards.
-- Created React dashboards to visualize real-time sales metrics for business stakeholders.
-- Automated data export and transformation scripts in Python, reducing manual work by 4 hours/week.
-- Integrated third-party APIs for payment processing and CRM data synchronization.
+Frontend Developer | PixelCraft Studio | Apr 2022 – Present
+Boston, MA
+- Built and maintained React + TypeScript component library used across 4 internal products.
+- Integrated REST APIs to connect frontend dashboards with backend services.
+- Wrote unit and integration tests using Jest and React Testing Library achieving 80% coverage.
+- Collaborated with UX designers using Figma to implement accessible, responsive interfaces.
+- Participated in Agile sprints, daily standups, and bi-weekly code reviews.
 
-Junior Developer | Freelance | Jan 2019 – Feb 2021
+Junior Frontend Developer | CodeBridge | Jan 2021 – Mar 2022
 Remote
-- Developed client websites using React and Node.js for small businesses.
-- Built a Python ETL script to migrate 50,000 customer records between CRM systems.
-- Created automated reports pulling data from MySQL databases for weekly business review.
-- Maintained PostgreSQL database for a local e-commerce client.
+- Developed landing pages and marketing UIs using HTML5, CSS3, and JavaScript.
+- Converted Figma designs to pixel-perfect React components for client projects.
+- Fixed cross-browser compatibility issues across Chrome, Firefox, and Safari.
 
 EDUCATION
-BS in Information Technology
-New York University | May 2019
-
-CERTIFICATIONS
-- Python for Data Science — Coursera (2022)
-- SQL for Data Analysis — Udemy (2021)
+BS in Web Design and Development
+Northeastern University | Dec 2020

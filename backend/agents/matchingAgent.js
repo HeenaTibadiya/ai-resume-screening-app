@@ -51,6 +51,7 @@ function normalizeSkill(skill) {
     'rb': 'ruby',
     'css3': 'css',
     'html5': 'html',
+    'rest apis': 'rest api',
     'rest': 'rest api',
     'restful': 'rest api',
     'graphql api': 'graphql',
@@ -75,6 +76,25 @@ function uniqueList(values) {
     if (!key || seen.has(key)) continue;
     seen.add(key);
     out.push(raw);
+  }
+  return out;
+}
+
+// Expand slash-compound skills so they match individually.
+// "HTML5/CSS3" → ["HTML5", "CSS3"], "HTML/CSS" → ["HTML", "CSS"], "C/C++" → ["C", "C++"]
+function expandSkills(skills) {
+  const out = [];
+  for (const skill of skills || []) {
+    const s = String(skill || '').trim();
+    if (!s) continue;
+    if (s.includes('/')) {
+      for (const part of s.split('/')) {
+        const p = part.trim();
+        if (p) out.push(p);
+      }
+    } else {
+      out.push(s);
+    }
   }
   return out;
 }
@@ -152,9 +172,9 @@ function verifyLLMMatchedSkills(llmMatchedSkills, jobSkills) {
 }
 
 async function runMatching(parsed) {
-  const resumeSkills = uniqueList(parsed && parsed.resumeSkills ? parsed.resumeSkills : []);
-  const requiredSkills = uniqueList(parsed && parsed.requiredSkills ? parsed.requiredSkills : []);
-  const niceToHave = uniqueList(parsed && parsed.niceToHave ? parsed.niceToHave : []);
+  const resumeSkills = uniqueList(expandSkills(parsed && parsed.resumeSkills ? parsed.resumeSkills : []));
+  const requiredSkills = uniqueList(expandSkills(parsed && parsed.requiredSkills ? parsed.requiredSkills : []));
+  const niceToHave = uniqueList(expandSkills(parsed && parsed.niceToHave ? parsed.niceToHave : []));
 
   const fallback = deterministicMatching(resumeSkills, requiredSkills);
 
