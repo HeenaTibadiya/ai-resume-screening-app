@@ -140,6 +140,32 @@ The app runs at `http://localhost:5173`
 
 ---
 
+## ⚡ Real-Time Agent Progress (Server-Sent Events)
+
+When you click **Analyze Resume**, the frontend doesn't just wait for a single response — it opens a live **Server-Sent Events (SSE)** connection to the backend that streams status updates as each agent runs.
+
+**How it works:**
+
+1. The frontend sends `POST /analyze` and receives a `requestId`.
+2. It immediately opens `GET /analyze/status/:requestId` as an SSE stream.
+3. As each agent completes, the backend pushes a status event through the stream.
+4. The frontend updates the UI in real time — showing which agent is currently running.
+5. Once all agents finish, the final result is returned and the stream closes.
+
+**Status events emitted (in order):**
+
+| Event | Message shown in UI |
+|---|---|
+| `start` | Starting analysis... |
+| `parsing` | Agent 1: Parsing resume and job description... |
+| `matching` | Agent 2: Matching skills... |
+| `feedback` | Agent 3: Generating feedback... |
+| `done` | Analysis complete |
+
+This approach gives users instant visual feedback instead of staring at a blank screen for 10+ seconds, and makes the multi-agent architecture visible and understandable.
+
+---
+
 ## 🤖 How the Agents Work
 
 | Agent | Role |
