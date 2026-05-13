@@ -8,6 +8,19 @@ Supports two LLM backends:
 
 ---
 
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, Vite, Axios, pdf-lib |
+| Backend | Node.js, Express 5 |
+| AI / LLM | LangChain, Ollama (Llama 3.2:1b) / Groq API (Llama 3.1:8b) |
+| Real-time | Server-Sent Events (SSE) |
+| Deployment | AWS EC2 (two instances) |
+| Dev Tools | Git, dotenv, nodemon |
+
+---
+
 ## 🎯 Why I Built This
 
 The modern job application process is broken in three ways:
@@ -21,6 +34,21 @@ The modern job application process is broken in three ways:
 > Upload or paste your resume → paste the job description → receive a match score → identify missing skills → get AI-generated improvement suggestions → download suggestions as a PDF.
 
 No more guessing. No more silence. Just clear, actionable feedback before you hit submit.
+
+---
+
+## ☁️ Deployment
+
+This application is deployed across **two separate AWS EC2 instances**:
+
+- **Frontend EC2** — runs the React + Vite application, served as a static build. The frontend communicates with the backend over HTTP using the backend EC2's public IP via the `VITE_API_URL` environment variable.
+- **Backend EC2** — runs the Node.js + Express server on port 5000. Ollama is installed directly on this instance, so the Llama 3.2:1b model runs entirely on the backend server with no external API calls. All resume and job description data stays within the EC2 environment and is never sent to a third-party service.
+
+This two-instance architecture separates concerns cleanly: the frontend can be scaled or replaced independently of the backend, and the backend can be upgraded (e.g. switching to a GPU instance for faster Ollama inference) without touching the frontend deployment.
+
+**EC2 configuration:**
+- On the **Backend EC2**: set `PORT=5000` in `backend/.env`, run `ollama serve` and `node server.js`, and open port 5000 in the instance's Security Group inbound rules.
+- On the **Frontend EC2**: set `VITE_API_URL=http://<backend-ec2-public-ip>:5000` in `frontend/.env`, run `npm run build`, and serve the `dist/` folder (e.g. via `npx serve dist` or Nginx).
 
 ---
 
