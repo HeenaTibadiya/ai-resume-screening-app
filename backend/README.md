@@ -1,6 +1,104 @@
-# ai-resume-screening-app — Backend
+# Agentic ResumeIQ — Backend
 
-The backend of the Resume Screening application, powered by **Node.js**, **Express**, and **Ollama (Llama 3.2:1b)** for AI-based resume analysis using a multi-agent architecture.
+Backend for the Agentic ResumeIQ application, built with **Node.js + Express** and a 3-agent LangChain pipeline. Uses **Ollama (Llama 3.2:1b)** by default, with optional **Groq API (Llama 3.1:8b)** support.
+
+---
+
+## 🛠 Tech Stack
+
+- Node.js + Express 5
+- LangChain (`langchain`, `@langchain/core`, `@langchain/community`)
+- Ollama — local LLM inference (default)
+- Groq API — optional cloud LLM (one-line swap)
+- Server-Sent Events (SSE) for real-time status streaming
+
+---
+
+## 📁 Folder Structure
+
+```
+backend/
+├── agents/
+│   ├── parserAgent.js       # Extracts structured data from resume + JD
+│   ├── matchingAgent.js     # Scores resume against job requirements
+│   ├── feedbackAgent.js     # Generates strengths, gaps, and rewritten bullets
+│   └── orchestrator.js      # Coordinates all agents and emits SSE events
+├── routes/
+│   └── analyze.js           # POST /analyze and GET /analyze/status/:requestId
+├── utils/
+│   ├── logger.js            # Request logging
+│   └── statusStream.js      # SSE helper
+└── server.js                # Express server entry point
+```
+
+---
+
+## ⚙️ Prerequisites
+
+- [Node.js](https://nodejs.org/) >= 18
+- npm
+- [Ollama](https://ollama.com/) installed and running locally
+- Llama 3.2:1b model pulled: `ollama pull llama3.2:1b`
+
+---
+
+## 🚀 Getting Started
+
+### 1. Install Dependencies
+
+```bash
+cd backend
+npm install
+```
+
+### 2. Set Up Environment Variables
+
+Create a `.env` file in the `backend/` folder:
+
+```env
+PORT=5000
+```
+
+> **Want to use Groq API instead of Ollama?** Add `GROQ_API_KEY=your_key` to `.env`, then in each agent file comment out the `Ollama` line and uncomment the `ChatGroq` line.
+
+### 3. Start Ollama
+
+```bash
+ollama serve
+```
+
+### 4. Run the Server
+
+```bash
+node server.js
+
+# Or with auto-reload
+npx nodemon server.js
+```
+
+The server runs at `http://localhost:5000`
+
+---
+
+## 📡 API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/analyze` | Run the full 3-agent pipeline on a resume + JD |
+| GET | `/analyze/status/:requestId` | SSE stream — real-time agent progress updates |
+| GET | `/health` | Health check |
+
+---
+
+## 🤖 How the Agents Work
+
+| Agent | Role |
+|---|---|
+| `parserAgent.js` | Extracts candidate name, experience years, resume skills, required skills, nice-to-have skills, and work experience bullets from the resume and JD |
+| `matchingAgent.js` | Scores resume against required and nice-to-have skills using LLM matching with a deterministic fallback; handles skill aliases (e.g. HTML5 → HTML, CSS3 → CSS) |
+| `feedbackAgent.js` | Generates a summary, strengths, skill gaps, actionable suggestions, and rewritten resume bullets |
+| `orchestrator.js` | Coordinates all agents, emits real-time SSE status events, and assembles the final result |
+
 
 ---
 
