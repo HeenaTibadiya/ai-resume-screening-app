@@ -8,6 +8,22 @@ Supports two LLM backends:
 
 ---
 
+## 🎯 Why I Built This
+
+The modern job application process is broken in three ways:
+
+1. **No feedback loop** — you apply and hear nothing back, with no idea why you were rejected.
+2. **ATS black box** — Applicant Tracking Systems automatically filter out resumes before any human ever sees them, with no transparency about what disqualified you.
+3. **Skill gap blindness** — it's extremely hard to know which skills you're missing without manually comparing your resume to every job description.
+
+**Agentic ResumeIQ solves all three problems in six simple steps:**
+
+> Upload or paste your resume → paste the job description → receive a match score → identify missing skills → get AI-generated improvement suggestions → download suggestions as a PDF.
+
+No more guessing. No more silence. Just clear, actionable feedback before you hit submit.
+
+---
+
 ## 📁 Project Structure
 
 ```
